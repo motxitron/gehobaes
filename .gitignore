@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+*.xlsx
+*.xls
+*.xlsm
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
