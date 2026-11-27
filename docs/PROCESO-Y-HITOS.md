@@ -115,20 +115,27 @@ No se deben subir cambios directamente a `main`. La plantilla del PR incluye una
 - [x] Validar la importación PDF en el navegador; nunca subir ni persistir el fichero original.
 - [x] Completar los criterios de aceptación descritos en [la especificación del Hito 2](HITO-2-GESTION-HORAS.md).
 
-### H3 — Identidad y permisos
+### H3 — Diseño visual y usabilidad (en implementación)
+
+- [x] Añadir observaciones diarias, visibles en la cuadrícula y en el informe mensual.
+- [x] Elegir A — Corporativo sobrio como estilo predeterminado, con selector persistente entre A, B y C según [Hito 3: diseño y usabilidad](HITO-3-DISENO-Y-USABILIDAD.md).
+- [x] Aplicar variantes visuales de paleta y densidad para los tres estilos.
+- [ ] Revisar contraste, navegación por teclado y ventanas estrechas.
+
+### H4 — Identidad y permisos
 
 - Elegir proveedor autorizado para autenticación, backend y base de datos.
 - Implementar permisos en el servidor: usuario normal sobre su propio perfil; administración de dominio/rol sobre el ámbito asignado; administrador total según política aprobada.
 - No confiar en controles de interfaz como barrera de seguridad. Añadir pruebas que intenten operaciones no autorizadas.
 - Revisar privacidad, seguridad, auditoría y gestión de credenciales antes de cargar datos reales.
 
-### H4 — Datos compartidos e historial
+### H5 — Datos compartidos e historial
 
 - Persistir cambios en una fuente común con control de concurrencia y zona horaria acordada.
 - Registrar quién cambió qué y cuándo, y definir retención y restauración.
 - Diseñar exportación/importación validada, con anonimización comprobable y confirmación previa.
 
-### H5 — Preparación para producción
+### H6 — Preparación para producción
 
 - Acordar operación, monitorización, copias, soporte y respuesta a incidentes.
 - Completar revisión de accesibilidad y pruebas en dispositivos/navegadores objetivo.

@@ -8,9 +8,11 @@ No introduzcas nombres, códigos, horarios ni otra información real del persona
 
 ## Abrir y navegar
 
-Visita <https://motxitron.github.io/gehobaes/>. El calendario muestra el año y mes actuales. Usa el selector **Año** y las flechas para navegar; **Today** vuelve al día actual y enfoca su celda. Pulsa **Informe mensual** para abrir el resumen en otra pestaña.
+Visita <https://motxitron.github.io/gehobaes/>. El calendario muestra el año y mes actuales. Usa **Diseño** para elegir entre Corporativo sobrio, Agenda compacta y Alto contraste; la preferencia se guarda en este navegador. Usa el selector **Año** y las flechas para navegar; **Today** vuelve al día actual y enfoca su celda. Pulsa **Informe mensual** para abrir el resumen en otra pestaña.
 
 Cada celda indica la jornada prevista y las actividades o coberturas del día. Los fines de semana y festivos empiezan con jornada cero. Selecciona una fecha para editarla.
+
+En el editor puedes añadir una observación de hasta 500 caracteres. Se guarda junto al día, aparece como avance en la celda y también en el detalle del informe mensual. El almacenamiento es local a este navegador; no incluyas datos personales ni información médica.
 
 En el perfil de la pantalla principal se muestra, para el año seleccionado, el cupo total y los días de vacaciones restantes, el saldo de la bolsa y el detalle de coberturas realizadas con su fecha, tipo y duración. Cada día marcado como `X` reduce los días restantes.
 
@@ -53,7 +55,7 @@ Los festivos aplican jornada cero y no admiten actividades ni coberturas. Para t
 
 ## Informe mensual
 
-El informe, abierto en otra pestaña, contiene jornada prevista, trabajo sin categoría, totales por actividad con horas positivas, horas extra de cobertura, movimientos y saldos de la bolsa, y detalle diario. Las actividades repetidas del mismo código se consolidan. Desde el botón de impresión del informe se puede imprimir o guardarlo como PDF.
+El informe, abierto en otra pestaña, contiene jornada prevista, trabajo sin categoría, totales por actividad con horas positivas, horas extra de cobertura, movimientos y saldos de la bolsa, observaciones y detalle diario. Las actividades repetidas del mismo código se consolidan. Desde el botón de impresión del informe se puede imprimir o guardarlo como PDF.
 
 **Todos los empleados** abre una cuadrícula del mes seleccionado con una columna por día y los datos de jornada, dominio y rol como columnas fijas, además de una leyenda de categorías. Selecciona una celda de `user1` para abrir el editor diario y registrar las mismas actividades, ausencias, vacaciones o coberturas que desde el calendario individual. El perfil piloto puede editar todas sus fechas; los otros perfiles no son editables porque son ficticios. `user1` muestra los datos guardados en este navegador; las otras 17 filas no son un censo real y no se sincronizan con empleados.
 
