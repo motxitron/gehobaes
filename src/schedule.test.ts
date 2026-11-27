@@ -4,6 +4,7 @@ import {
   getBankBalance,
   getMonthSummary,
   getScheduledMinutes,
+  normalizeCoverageActivities,
   validateBankBalance,
   validateDayRecord,
   validateYearSettings,
@@ -86,6 +87,29 @@ describe("reglas de jornada", () => {
     expect(getMonthSummary(data, 2026, 5).days[0].workWithoutCategoryMinutes).toBe(
       330,
     );
+  });
+
+  it("mueve coberturas C antiguas fuera de la jornada y las añade a la bolsa", () => {
+    const data = createEmptySchedule(2026);
+    data.days["2026-06-01"] = {
+      activities: [
+        { id: "c", code: "C", minutes: 90 },
+        { id: "f", code: "F", minutes: 120 },
+      ],
+      coverages: [],
+    };
+
+    const normalized = normalizeCoverageActivities(data);
+    const record = normalized.days["2026-06-01"];
+    const summary = getMonthSummary(normalized, 2026, 5);
+
+    expect(record.activities.map((activity) => activity.code)).toEqual(["F"]);
+    expect(record.coverages).toEqual([{ id: "c", minutes: 90, paid: false }]);
+    expect(summary.days[0].workWithoutCategoryMinutes).toBe(420);
+    expect(summary.activityMinutes.C).toBe(90);
+    expect(getScheduledMinutes("2026-06-01", normalized)).toBe(540);
+    expect(validateDayRecord("2026-06-01", record, normalized)).toBeNull();
+    expect(getBankBalance(normalized, 2026)).toBe(90);
   });
 });
 

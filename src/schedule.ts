@@ -92,6 +92,33 @@ export function createEmptySchedule(year: number): ScheduleData {
   };
 }
 
+export function normalizeCoverageActivities(data: ScheduleData): ScheduleData {
+  let changed = false;
+  const days: Record<DateKey, DayRecord> = {};
+  for (const [date, record] of Object.entries(data.days)) {
+    const coverageActivities = record.activities.filter(
+      (activity) => activity.code === "C",
+    );
+    if (coverageActivities.length === 0) {
+      days[date] = record;
+      continue;
+    }
+    changed = true;
+    days[date] = {
+      activities: record.activities.filter((activity) => activity.code !== "C"),
+      coverages: [
+        ...record.coverages,
+        ...coverageActivities.map(({ id, minutes }) => ({
+          id,
+          minutes,
+          paid: false,
+        })),
+      ],
+    };
+  }
+  return changed ? { ...data, days } : data;
+}
+
 export function isDateKey(value: string): boolean {
   if (!DATE_PATTERN.test(value)) return false;
   const [year, month, day] = value.split("-").map(Number);
@@ -216,6 +243,9 @@ export function validateDayRecord(
     )
   ) {
     return "Cada actividad debe tener un código válido y una duración positiva en minutos.";
+  }
+  if (record.activities.some((activity) => activity.code === "C")) {
+    return "La cobertura C se registra fuera de la jornada y añade horas a la bolsa; no la añadas como actividad.";
   }
   if (
     record.coverages.some(
@@ -343,6 +373,7 @@ export function getMonthSummary(
     for (const activity of record.activities) {
       activityMinutes[activity.code] += activity.minutes;
     }
+    activityMinutes.C += earned;
     activityMinutes.CR += paid;
 
     days.push({

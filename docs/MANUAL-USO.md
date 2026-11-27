@@ -21,10 +21,10 @@ Guarda los cambios con **Guardar jornada**. La aplicación no permite guardar un
 ## Editar actividades y coberturas
 
 1. Selecciona un día y añade una o más actividades con su duración.
-2. Las actividades de jornada disponibles son `C`, `CO`, `F`, `E`, `M`, `O`, `X`, `LD`, `MT`, `LT`, `AR`, `NF` y `CD`.
+2. Las actividades dentro de la jornada son `CO`, `F`, `E`, `M`, `O`, `X`, `LD`, `MT`, `LT`, `AR`, `NF` y `CD`.
 3. Las horas de actividad se descuentan de la jornada prevista. El remanente se calcula como trabajo sin categoría.
 4. `X` ocupa el día completo y no se combina con otras actividades. No se puede registrar en una fecha con jornada cero.
-5. Las coberturas extra se introducen separadas de la jornada. Sin remunerar, añaden horas a la bolsa `CD`; al marcar un bloque como remunerado, se registra como `CR`. `CR` solo se permite dentro del periodo de verano configurado.
+5. El código `C` se registra en **Cobertura extra**, fuera de la jornada: no resta horas del día y, sin remunerar, añade esas horas a la bolsa `CD`. Al marcar un bloque como remunerado, se registra como `CR`; `CR` solo se permite dentro del periodo de verano configurado. Pulsa **Guardar día** para aplicar los movimientos a la bolsa.
 6. `CD` consume el saldo disponible y reduce el tiempo restante de trabajo del día. No se puede dejar la bolsa en negativo. El saldo solo se puede usar dentro del mismo año natural y caduca al acabar el año.
 7. Elimina o ajusta cada actividad o bloque individualmente y pulsa **Guardar día**. Si la edición deja una jornada o saldo inválidos, se explica el motivo y no se guarda.
 
@@ -35,9 +35,9 @@ Guarda los cambios con **Guardar jornada**. La aplicación no permite guardar un
 En **Festivos** introduce fecha y descripción manualmente. También puedes importar un PDF desde el dispositivo:
 
 - El PDF se procesa en el navegador; se limita a 20 MB y 50 páginas.
-- La aplicación detecta fechas del año seleccionado en formatos numéricos o escritos en castellano y muestra una vista previa editable.
+- La aplicación detecta fechas del año seleccionado en formatos numéricos, ISO o escritos en castellano, incluso cuando el documento no repite el año; muestra una vista previa editable.
 - Confirma solo las fechas correctas. Se guardan las fechas y descripciones confirmadas, nunca el archivo PDF.
-- Si no se detectan las fechas, usa la entrada manual.
+- El resultado o el error de lectura aparece junto al selector del PDF. Los documentos escaneados sin texto seleccionable no se pueden reconocer automáticamente; usa la entrada manual.
 
 Los festivos aplican jornada cero. Si se trabaja un fin de semana o festivo, registra primero una **Excepción de jornada** con la fecha y las horas previstas. La excepción prevalece sobre el patrón semanal y permite luego añadir actividades al día.
 

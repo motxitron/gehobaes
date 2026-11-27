@@ -11,6 +11,7 @@ import {
   isDateKey,
   isSummerDate,
   minutesToTimeInput,
+  normalizeCoverageActivities,
   parseTimeInput,
   validateAllDays,
   validateBankBalance,
@@ -124,10 +125,20 @@ function loadSchedule(year: number): StoredSchedule {
     if (!saved) return { data: fallback, error: false };
     const parsed: unknown = JSON.parse(saved);
     if (!isScheduleData(parsed)) return { data: fallback, error: true };
-    if (!parsed.yearly[String(year)]) {
-      parsed.yearly[String(year)] = { ...getYearSettings(parsed, year) };
+    const normalized = normalizeCoverageActivities(parsed);
+    if (!normalized.yearly[String(year)]) {
+      return {
+        data: {
+          ...normalized,
+          yearly: {
+            ...normalized.yearly,
+            [year]: { ...getYearSettings(normalized, year) },
+          },
+        },
+        error: false,
+      };
     }
-    return { data: parsed, error: false };
+    return { data: normalized, error: false };
   } catch {
     return { data: fallback, error: true };
   }
@@ -155,7 +166,8 @@ function App() {
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [draftActivities, setDraftActivities] = useState<DayActivity[]>([]);
   const [draftCoverages, setDraftCoverages] = useState<ExtraCoverage[]>([]);
-  const [newActivityCode, setNewActivityCode] = useState<ActivityCode>("F");
+  const [newActivityCode, setNewActivityCode] =
+    useState<Exclude<ActivityCode, "C">>("F");
   const [newActivityTime, setNewActivityTime] = useState("01:00");
   const [newCoverageTime, setNewCoverageTime] = useState("01:00");
   const [newCoveragePaid, setNewCoveragePaid] = useState(false);
@@ -168,6 +180,10 @@ function App() {
   const [exceptionDate, setExceptionDate] = useState("");
   const [exceptionTime, setExceptionTime] = useState("00:00");
   const [pdfImporting, setPdfImporting] = useState(false);
+  const [pdfStatus, setPdfStatus] = useState<{
+    message: string;
+    error: boolean;
+  } | null>(null);
   const [holidayPreview, setHolidayPreview] = useState<HolidayPreview[]>([]);
   const [focusDate, setFocusDate] = useState<string | null>(null);
   const [focusRequest, setFocusRequest] = useState(0);
@@ -243,6 +259,15 @@ function App() {
   const summerConfigured = Boolean(yearSettings.summerStart && yearSettings.summerEnd);
   const isPaidCoverageAllowed =
     !!editingDate && isSummerDate(editingDate, yearSettings);
+  const draftBankBalance = editingDate
+    ? getBankBalance(data, Number(editingDate.slice(0, 4)), editingDate) +
+      draftCoverages
+        .filter((coverage) => !coverage.paid)
+        .reduce((total, coverage) => total + coverage.minutes, 0) -
+      draftActivities
+        .filter((activity) => activity.code === "CD")
+        .reduce((total, activity) => total + activity.minutes, 0)
+    : 0;
 
   function changeMonth(offset: number) {
     const next = new Date(year, month + offset, 1);
@@ -397,13 +422,15 @@ function App() {
   async function importHolidayPdf(file: File | undefined) {
     if (!file) return;
     setFormError("");
+    setPdfStatus({ message: "Leyendo el PDF localmente…", error: false });
     setPdfImporting(true);
     try {
       const dates = await extractHolidayDates(file, year);
       if (!dates.length) {
-        setFormError(
-          `No se detectaron fechas de ${year}. Puedes añadir los festivos manualmente.`,
-        );
+        setPdfStatus({
+          message: `No se detectaron fechas de ${year}. Si el PDF es una imagen escaneada, añade los festivos manualmente.`,
+          error: true,
+        });
         return;
       }
       setHolidayPreview(
@@ -413,12 +440,18 @@ function App() {
           selected: !data.holidays[date],
         })),
       );
+      setPdfStatus({
+        message: `Se detectaron ${dates.length} fechas. Revísalas y confirma la importación.`,
+        error: false,
+      });
     } catch (error) {
-      setFormError(
-        error instanceof Error
-          ? `No se pudo leer el PDF localmente: ${error.message}`
-          : "No se pudo leer el PDF localmente. Añade los festivos manualmente.",
-      );
+      setPdfStatus({
+        message:
+          error instanceof Error
+            ? `No se pudo leer el PDF localmente: ${error.message}`
+            : "No se pudo leer el PDF localmente. Añade los festivos manualmente.",
+        error: true,
+      });
     } finally {
       setPdfImporting(false);
     }
@@ -442,6 +475,10 @@ function App() {
     }
     setStored({ data: next, error: false });
     setHolidayPreview([]);
+    setPdfStatus({
+      message: `Se guardaron ${selected.length} festivos confirmados.`,
+      error: false,
+    });
     setFormError("");
   }
 
@@ -715,7 +752,7 @@ function App() {
                       <span className="activity-list">
                         {item.record.coverages.map((coverage) => (
                           <span className={`activity-chip ${coverage.paid ? "paid-coverage" : "bank-coverage"}`} key={coverage.id}>
-                            <strong>{coverage.paid ? "CR" : "+CD"}</strong>
+                            <strong>{coverage.paid ? "CR" : "C"}</strong>
                             <span>{formatMinutes(coverage.minutes)}</span>
                           </span>
                         ))}
@@ -776,6 +813,14 @@ function App() {
               />
             </label>
             <p className="privacy-note">El PDF se procesa en este navegador y se descarta; solo se guardan las fechas que confirmes.</p>
+            {pdfStatus && (
+              <p
+                className={`pdf-status${pdfStatus.error ? " error" : ""}`}
+                role={pdfStatus.error ? "alert" : "status"}
+              >
+                {pdfStatus.message}
+              </p>
+            )}
             <ul className="date-list">
               {Object.entries(data.holidays)
                 .filter(([date]) => date.startsWith(`${year}-`))
@@ -876,7 +921,9 @@ function App() {
                         );
                       }}
                     >
-                      {Object.entries(ACTIVITY_DEFINITIONS).map(([code, definition]) => (
+                      {Object.entries(ACTIVITY_DEFINITIONS)
+                        .filter(([code]) => code !== "C")
+                        .map(([code, definition]) => (
                         <option key={code} value={code}>{code} · {definition.label}</option>
                       ))}
                     </select>
@@ -908,8 +955,10 @@ function App() {
             <div className="add-row">
               <label>
                 Nueva actividad
-                <select value={newActivityCode} onChange={(event) => setNewActivityCode(event.target.value as ActivityCode)}>
-                  {Object.entries(ACTIVITY_DEFINITIONS).map(([code, definition]) => (
+                <select value={newActivityCode} onChange={(event) => setNewActivityCode(event.target.value as Exclude<ActivityCode, "C">)}>
+                  {Object.entries(ACTIVITY_DEFINITIONS)
+                    .filter(([code]) => code !== "C")
+                    .map(([code, definition]) => (
                     <option key={code} value={code}>{code} · {definition.label}</option>
                   ))}
                 </select>
@@ -929,11 +978,11 @@ function App() {
               </p>
             )}
 
-            <h3>Cobertura extra fuera de jornada</h3>
+            <h3>Cobertura extra (C / CR), fuera de jornada</h3>
             <div className="draft-list">
               {draftCoverages.map((coverage) => (
                 <div className="draft-row coverage-row" key={coverage.id}>
-                  <span>{coverage.paid ? "CR · Remunerada" : "Cobertura a bolsa CD"}</span>
+                  <span>{coverage.paid ? "CR · Remunerada" : "C · Añadida a la bolsa CD"}</span>
                   <label>
                     Duración
                     <input
@@ -995,6 +1044,10 @@ function App() {
                 Añadir
               </button>
             </div>
+            <p className="dialog-note">
+              Saldo CD tras guardar: {formatMinutes(draftBankBalance)}. Los
+              cambios de la bolsa se aplican al pulsar «Guardar día».
+            </p>
             {!isPaidCoverageAllowed && (
               <p className="dialog-note">CR solo está disponible dentro del periodo anual de verano.</p>
             )}

@@ -234,6 +234,8 @@ button.day-cell:hover { z-index: 1; outline: 1px solid #aebcf3; background: #fbf
 .file-picker input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
 .file-picker:focus-within { outline: 2px solid #4667e8; }
 .privacy-note { margin: 7px 0 0; color: #8994a6; font-size: 9px; line-height: 1.4; }
+.pdf-status { margin: 7px 0 0; padding: 8px 9px; border-radius: 6px; background: #edf8f3; color: #28775e; font-size: 10px; line-height: 1.4; }
+.pdf-status.error { background: #fff5ea; color: #9a5a17; }
 .date-list { display: grid; gap: 5px; margin: 11px 0 0; padding: 0; list-style: none; }
 .date-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; background: #f8f9fc; color: #68758a; font-size: 10px; }
 .date-list strong { color: #344158; }
