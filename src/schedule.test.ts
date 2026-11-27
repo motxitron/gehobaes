@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  MAX_DAY_OBSERVATION_LENGTH,
   createEmptySchedule,
   getBankBalance,
   getMonthSummary,
@@ -48,6 +49,26 @@ describe("reglas de jornada", () => {
     expect(validateDayRecord("2026-06-01", record, data)).toContain(
       "no admite actividades ni coberturas",
     );
+  });
+
+  it("permite observaciones en días normales y festivos con un límite de longitud", () => {
+    const data = createEmptySchedule(2026);
+    const record = {
+      activities: [],
+      coverages: [],
+      observation: "Recordatorio del día",
+    };
+
+    expect(validateDayRecord("2026-06-01", record, data)).toBeNull();
+    data.holidays["2026-06-01"] = "Festivo";
+    expect(validateDayRecord("2026-06-01", record, data)).toBeNull();
+    expect(
+      validateDayRecord(
+        "2026-06-01",
+        { ...record, observation: "a".repeat(MAX_DAY_OBSERVATION_LENGTH + 1) },
+        data,
+      ),
+    ).toContain("no pueden superar");
   });
 
   it("exige que X ocupe toda la jornada sin combinarse", () => {

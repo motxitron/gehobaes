@@ -74,9 +74,14 @@ export function buildMonthlyReportHtml(
       const note = data.holidays[day.date]
         ? `Festivo: ${escapeHtml(data.holidays[day.date])} · jornada ${formatMinutes(day.scheduledMinutes)}`
         : formatMinutes(day.scheduledMinutes);
+      const observation = escapeHtml(day.observation?.trim() || "—").replace(
+        /\r?\n/g,
+        "<br>",
+      );
       return `<tr>
         <td>${new Date(`${day.date}T12:00:00`).toLocaleDateString("es-ES")}</td>
         <td>${note}</td>
+        <td>${observation}</td>
         <td>${escapeHtml(activities || "—")}</td>
         <td>${formatMinutes(day.workWithoutCategoryMinutes)}</td>
         <td>${escapeHtml(coverage || "—")}</td>
@@ -131,7 +136,7 @@ export function buildMonthlyReportHtml(
 <section class="panel">
   <h2>Detalle diario</h2>
   <table>
-    <thead><tr><th>Fecha</th><th>Jornada prevista / festivo</th><th>Actividades</th><th>Trabajo sin categoría</th><th>Cobertura extra</th><th>Movimiento de bolsa</th></tr></thead>
+    <thead><tr><th>Fecha</th><th>Jornada prevista / festivo</th><th>Observaciones</th><th>Actividades</th><th>Trabajo sin categoría</th><th>Cobertura extra</th><th>Movimiento de bolsa</th></tr></thead>
     <tbody>${details}</tbody>
   </table>
 </section>

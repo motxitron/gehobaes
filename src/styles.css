@@ -23,7 +23,7 @@ body {
 button, select, input { font: inherit; }
 button { cursor: pointer; }
 
-.app-shell { min-height: 100vh; }
+.app-shell { min-height: 100vh; background: #f5f7fb; }
 
 .topbar {
   height: 68px;
@@ -76,6 +76,8 @@ h1 { margin-bottom: 4px; color: #17233b; font-size: clamp(24px, 3vw, 30px); lett
 h2 { color: #1c2940; }
 .subtitle { margin: 0; color: #758198; font-size: 13px; }
 .year-picker { display: flex; align-items: center; gap: 10px; color: #77839a; font-size: 12px; font-weight: 600; }
+.theme-picker { display: flex; align-items: center; gap: 8px; color: #77839a; font-size: 12px; font-weight: 600; }
+.theme-picker select { min-width: 185px; height: 38px; padding: 0 10px; border: 1px solid #dfe5ef; border-radius: 7px; background: #fff; color: #29364d; font-size: 11px; }
 .year-picker select, .settings-fields input, .inline-form input, .inline-form select,
 .draft-row input, .draft-row select, .add-row input, .add-row select,
 .holiday-preview-row > input, .holiday-preview-row > select, .import-controls select,
@@ -207,6 +209,7 @@ button.day-cell:hover { z-index: 1; outline: 1px solid #aebcf3; background: #fbf
 .day-cell.holiday { background: #fffaf0; }
 .day-cell.outside-month { min-height: 86px; background: #fafbfc; }
 .holiday-label { overflow: hidden; color: #9b6b1f; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.day-observation { display: block; overflow: hidden; color: #66748c; font-size: 8px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
 .remaining-time { color: #75839b; font-size: 8px; }
 .activity-list { display: flex; flex-wrap: wrap; gap: 3px; }
 .activity-chip { display: inline-flex; max-width: 100%; align-items: center; gap: 4px; padding: 3px 4px; border-radius: 4px; font-size: 9px; line-height: 1; white-space: nowrap; }
@@ -276,6 +279,9 @@ button.day-cell:hover { z-index: 1; outline: 1px solid #aebcf3; background: #fbf
 .edit-dialog h3 { margin: 17px 0 8px; font-size: 12px; }
 .day-context { display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 9px 10px; border-radius: 7px; background: #f5f7fb; color: #718098; font-size: 10px; }
 .day-context strong { color: #2f3e57; }
+.observation-field { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; color: #59667d; font-size: 10px; font-weight: 600; }
+.observation-field textarea { width: 100%; min-height: 72px; padding: 9px 10px; border: 1px solid #dfe5ef; border-radius: 7px; background: #fff; color: #29364d; font: inherit; font-weight: 400; resize: vertical; }
+.observation-help { color: #8994a6; font-size: 9px; font-weight: 400; line-height: 1.4; }
 .draft-list { display: grid; gap: 7px; }
 .draft-row, .add-row { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(100px, .55fr) auto; align-items: end; gap: 8px; }
 .draft-row { padding: 7px; border: 1px solid #edf0f5; border-radius: 7px; }
@@ -359,6 +365,8 @@ button.day-cell:hover { z-index: 1; outline: 1px solid #aebcf3; background: #fbf
   .page-heading-actions { width: 100%; justify-content: flex-start; flex-direction: row; }
   .year-picker { align-items: flex-start; flex-direction: column; gap: 4px; }
   .year-picker select { min-width: 82px; height: 34px; }
+  .theme-picker { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .theme-picker select { min-width: 185px; height: 34px; }
   .annual-settings { padding: 13px; }
   .settings-fields { gap: 9px; }
   .workspace { grid-template-columns: 1fr; }
@@ -410,3 +418,85 @@ button.day-cell:hover { z-index: 1; outline: 1px solid #aebcf3; background: #fbf
   .summer-period-preview { grid-template-columns: 1fr 1fr; }
   .page-heading-actions { flex-wrap: wrap; }
 }
+
+.app-shell[data-theme="compact"] { background: #eef2f5; }
+.app-shell[data-theme="compact"] .topbar { background: #f9fbfc; border-color: #d5e0e5; }
+.app-shell[data-theme="compact"] .annual-settings,
+.app-shell[data-theme="compact"] .profile-card,
+.app-shell[data-theme="compact"] .calendar-card,
+.app-shell[data-theme="compact"] .management-card {
+  border-color: #d5e0e5;
+  border-radius: 8px;
+  box-shadow: none;
+}
+.app-shell[data-theme="compact"] .calendar-toolbar { min-height: 54px; padding: 8px 12px; }
+.app-shell[data-theme="compact"] .day-cell,
+.app-shell[data-theme="compact"] .day-cell.outside-month { min-height: 68px; gap: 3px; padding: 4px; }
+.app-shell[data-theme="compact"] .weekday { min-height: 27px; }
+.app-shell[data-theme="compact"] .report-button,
+.app-shell[data-theme="compact"] .save-button { border-color: #168c83; background: #168c83; }
+.app-shell[data-theme="compact"] .report-button:hover,
+.app-shell[data-theme="compact"] .save-button:hover { background: #0f706a; }
+.app-shell[data-theme="compact"] .brand-mark { background: #e4f3f1; color: #0f706a; }
+.app-shell[data-theme="compact"] .today-button:hover,
+.app-shell[data-theme="compact"] .icon-button:hover { border-color: #168c83; color: #0f706a; }
+.app-shell[data-theme="compact"] .theme-picker select:focus-visible { outline: 2px solid #168c83; }
+
+.app-shell[data-theme="contrast"] { background: #fff; color: #111827; }
+.app-shell[data-theme="contrast"] h1,
+.app-shell[data-theme="contrast"] h2,
+.app-shell[data-theme="contrast"] h3 { color: #111827; }
+.app-shell[data-theme="contrast"] .eyebrow,
+.app-shell[data-theme="contrast"] .subtitle,
+.app-shell[data-theme="contrast"] .year-picker,
+.app-shell[data-theme="contrast"] .theme-picker,
+.app-shell[data-theme="contrast"] .profile-details dt,
+.app-shell[data-theme="contrast"] .field-label,
+.app-shell[data-theme="contrast"] .month-title p,
+.app-shell[data-theme="contrast"] .calendar-summary,
+.app-shell[data-theme="contrast"] .calendar-footer,
+.app-shell[data-theme="contrast"] .dialog-note,
+.app-shell[data-theme="contrast"] .observation-help { color: #344054; }
+.app-shell[data-theme="contrast"] .topbar { border-bottom: 2px solid #667085; }
+.app-shell[data-theme="contrast"] .notice {
+  border: 2px solid #005fcc;
+  background: #fff;
+  color: #111827;
+}
+.app-shell[data-theme="contrast"] .notice strong { color: #111827; }
+.app-shell[data-theme="contrast"] .annual-settings,
+.app-shell[data-theme="contrast"] .profile-card,
+.app-shell[data-theme="contrast"] .calendar-card,
+.app-shell[data-theme="contrast"] .management-card {
+  border: 2px solid #667085;
+  box-shadow: none;
+}
+.app-shell[data-theme="contrast"] .weekday { background: #f3f4f6; color: #111827; }
+.app-shell[data-theme="contrast"] .day-cell { border-color: #667085; color: #111827; }
+.app-shell[data-theme="contrast"] .day-cell.weekend { background: #f3f4f6; }
+.app-shell[data-theme="contrast"] .day-cell.holiday { background: #fff4cc; }
+.app-shell[data-theme="contrast"] .day-cell .holiday-label,
+.app-shell[data-theme="contrast"] .day-cell .empty-day-hint { color: #6b4600; }
+.app-shell[data-theme="contrast"] .day-cell .empty-day-hint { opacity: 1; }
+.app-shell[data-theme="contrast"] .day-number,
+.app-shell[data-theme="contrast"] .planned-hours,
+.app-shell[data-theme="contrast"] .remaining-time { color: #111827; }
+.app-shell[data-theme="contrast"] .day-cell.today .day-number { background: #005fcc; color: #fff; }
+.app-shell[data-theme="contrast"] .year-picker select,
+.app-shell[data-theme="contrast"] .theme-picker select,
+.app-shell[data-theme="contrast"] .observation-field textarea,
+.app-shell[data-theme="contrast"] .draft-row input,
+.app-shell[data-theme="contrast"] .draft-row select,
+.app-shell[data-theme="contrast"] .add-row input,
+.app-shell[data-theme="contrast"] .add-row select {
+  border-color: #667085;
+  color: #111827;
+}
+.app-shell[data-theme="contrast"] .calendar-summary strong,
+.app-shell[data-theme="contrast"] .annual-summary-stats dd { color: #111827; }
+.app-shell[data-theme="contrast"] .report-button,
+.app-shell[data-theme="contrast"] .save-button { border-color: #005fcc; background: #005fcc; }
+.app-shell[data-theme="contrast"] .report-button:hover,
+.app-shell[data-theme="contrast"] .save-button:hover { background: #004da8; }
+.app-shell[data-theme="contrast"] .dialog-backdrop .edit-dialog { border: 2px solid #667085; }
+.app-shell[data-theme="contrast"] :focus-visible { outline-color: #005fcc; }

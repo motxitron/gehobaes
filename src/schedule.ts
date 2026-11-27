@@ -25,6 +25,7 @@ export type ActivityCode = keyof typeof ACTIVITY_DEFINITIONS;
 export type ReportCode = ActivityCode | "CR";
 export type DateKey = string;
 export type HolidayCode = keyof typeof HOLIDAY_DEFINITIONS;
+export const MAX_DAY_OBSERVATION_LENGTH = 500;
 
 export interface DayActivity {
   id: string;
@@ -41,6 +42,7 @@ export interface ExtraCoverage {
 export interface DayRecord {
   activities: DayActivity[];
   coverages: ExtraCoverage[];
+  observation?: string;
 }
 
 export interface YearSettings {
@@ -74,6 +76,7 @@ export interface MonthDaySummary {
   scheduledMinutes: number;
   activities: DayActivity[];
   extraCoverages: ExtraCoverage[];
+  observation?: string;
   workWithoutCategoryMinutes: number;
   earnedMinutes: number;
   spentMinutes: number;
@@ -366,6 +369,13 @@ export function validateDayRecord(
   ) {
     return "Cada actividad debe tener un código válido y una duración positiva en minutos.";
   }
+  if (
+    record.observation !== undefined &&
+    (typeof record.observation !== "string" ||
+      record.observation.length > MAX_DAY_OBSERVATION_LENGTH)
+  ) {
+    return `Las observaciones no pueden superar ${MAX_DAY_OBSERVATION_LENGTH} caracteres.`;
+  }
   if (record.activities.some((activity) => activity.code === "C")) {
     return "La cobertura C se registra fuera de la jornada y añade horas a la bolsa; no la añadas como actividad.";
   }
@@ -513,6 +523,7 @@ export function getMonthSummary(
       scheduledMinutes: planned,
       activities: record.activities,
       extraCoverages: record.coverages,
+      observation: record.observation,
       workWithoutCategoryMinutes: Math.max(0, planned - categorized),
       earnedMinutes: earned,
       spentMinutes: spent,

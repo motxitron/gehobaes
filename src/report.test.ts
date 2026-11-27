@@ -40,4 +40,20 @@ describe("informe mensual", () => {
     expect(html.match(/F 2:30/g)).toHaveLength(1);
     expect(html).not.toContain("F 1:00");
   });
+
+  it("incluye observaciones diarias escapando HTML y conservando saltos de línea", () => {
+    const data = createEmptySchedule(2026);
+    data.days["2026-06-01"] = {
+      activities: [],
+      coverages: [],
+      observation: "Recordatorio <script>alert('x')</script>\nSegunda línea",
+    };
+
+    const html = buildMonthlyReportHtml(data, 2026, 5);
+
+    expect(html).toContain(
+      "Recordatorio &lt;script&gt;alert(&#39;x&#39;)&lt;/script&gt;<br>Segunda línea",
+    );
+    expect(html).not.toContain("<script>alert(");
+  });
 });

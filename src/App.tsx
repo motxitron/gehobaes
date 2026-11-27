@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ACTIVITY_DEFINITIONS,
   HOLIDAY_DEFINITIONS,
+  MAX_DAY_OBSERVATION_LENGTH,
   createEmptySchedule,
   formatMinutes,
   getBankBalance,
@@ -46,6 +47,15 @@ const MONTHS = [
 ];
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const STORAGE_KEY = "motxitron-schedule-v2";
+const THEME_STORAGE_KEY = "motxitron-visual-theme-v1";
+
+type VisualTheme = "corporate" | "compact" | "contrast";
+
+const VISUAL_THEMES: { id: VisualTheme; label: string }[] = [
+  { id: "corporate", label: "A · Corporativo sobrio" },
+  { id: "compact", label: "B · Agenda compacta" },
+  { id: "contrast", label: "C · Alto contraste accesible" },
+];
 
 interface DemoEmployee {
   name: string;
@@ -110,6 +120,22 @@ function isHolidayCode(value: unknown): value is HolidayCode {
   );
 }
 
+function isVisualTheme(value: unknown): value is VisualTheme {
+  return VISUAL_THEMES.some((theme) => theme.id === value);
+}
+
+function loadVisualTheme(): { theme: VisualTheme; error: boolean } {
+  try {
+    const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    return {
+      theme: isVisualTheme(savedTheme) ? savedTheme : "corporate",
+      error: false,
+    };
+  } catch {
+    return { theme: "corporate", error: true };
+  }
+}
+
 function isScheduleData(value: unknown): value is ScheduleData {
   if (!isRecord(value)) return false;
   const { yearly, holidays, holidayCodes, exceptions, days } = value;
@@ -170,7 +196,10 @@ function isScheduleData(value: unknown): value is ScheduleData {
           typeof coverage.id === "string" &&
           Number.isInteger(coverage.minutes) &&
           typeof coverage.paid === "boolean",
-      ),
+      ) &&
+      (record.observation === undefined ||
+        (typeof record.observation === "string" &&
+          record.observation.length <= MAX_DAY_OBSERVATION_LENGTH)),
   );
 }
 
@@ -260,9 +289,11 @@ function App() {
   const [stored, setStored] = useState(() => loadSchedule(today.getFullYear()));
   const { data } = stored;
   const [storageError, setStorageError] = useState(false);
+  const [visualTheme, setVisualTheme] = useState(loadVisualTheme);
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [draftActivities, setDraftActivities] = useState<DayActivity[]>([]);
   const [draftCoverages, setDraftCoverages] = useState<ExtraCoverage[]>([]);
+  const [draftObservation, setDraftObservation] = useState("");
   const [draftHoliday, setDraftHoliday] = useState(false);
   const [draftHolidayCode, setDraftHolidayCode] = useState<HolidayCode>("DI");
   const [newActivityCode, setNewActivityCode] =
@@ -384,6 +415,7 @@ function App() {
       day &&
       (day.record.activities.length > 0 ||
         day.record.coverages.length > 0 ||
+        Boolean(day.record.observation?.trim()) ||
         data.holidays[day.date]),
   ).length;
   const coverageCount = monthDays.reduce(
@@ -427,6 +459,15 @@ function App() {
     setMonth(next.getMonth());
   }
 
+  function changeVisualTheme(theme: VisualTheme) {
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+      setVisualTheme({ theme, error: false });
+    } catch {
+      setVisualTheme({ theme, error: true });
+    }
+  }
+
   function openEditor(date: string) {
     const record = data.days[date] ?? { activities: [], coverages: [] };
     setEditingDate(date);
@@ -434,6 +475,7 @@ function App() {
     setDraftHolidayCode(data.holidayCodes[date] ?? "DI");
     setDraftActivities(record.activities.map((activity) => ({ ...activity })));
     setDraftCoverages(record.coverages.map((coverage) => ({ ...coverage })));
+    setDraftObservation(record.observation ?? "");
     setNewActivityCode("F");
     setNewActivityTime("01:00");
     setNewCoverageTime("01:00");
@@ -489,6 +531,7 @@ function App() {
     const record: DayRecord = {
       activities: mergeActivitiesByCode(draftActivities),
       coverages: draftCoverages,
+      observation: draftObservation.trim(),
     };
     const next: ScheduleData = {
       ...data,
@@ -504,7 +547,11 @@ function App() {
       delete next.holidays[editingDate];
       delete next.holidayCodes[editingDate];
     }
-    if (!draftHoliday && (record.activities.length || record.coverages.length)) {
+    if (
+      record.activities.length ||
+      record.coverages.length ||
+      record.observation
+    ) {
       next.days[editingDate] = record;
     } else {
       delete next.days[editingDate];
@@ -769,7 +816,7 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" data-theme={visualTheme.theme}>
       <header className="topbar">
         <a className="brand" href="#inicio" aria-label="Gestión de horarios">
           <span className="brand-mark" aria-hidden="true">
@@ -818,6 +865,22 @@ function App() {
               ))}
             </select>
           </label>
+          <label className="theme-picker">
+            <span>Diseño</span>
+            <select
+              aria-label="Estilo visual"
+              onChange={(event) => {
+                if (isVisualTheme(event.target.value)) {
+                  changeVisualTheme(event.target.value);
+                }
+              }}
+              value={visualTheme.theme}
+            >
+              {VISUAL_THEMES.map((theme) => (
+                <option key={theme.id} value={theme.id}>{theme.label}</option>
+              ))}
+            </select>
+          </label>
           <div className="page-heading-actions">
             <button
               type="button"
@@ -848,6 +911,11 @@ function App() {
           <p className="storage-warning" role="alert">
             No se pudo leer o guardar el calendario en este navegador. Los
             cambios pueden no conservarse al cerrar la página.
+          </p>
+        )}
+        {visualTheme.error && (
+          <p className="storage-warning" role="status">
+            No se pudo guardar la preferencia visual en este navegador; el tema elegido solo se aplicará durante esta sesión.
           </p>
         )}
         {formError && <p className="form-feedback" role="alert">{formError}</p>}
@@ -1055,7 +1123,7 @@ function App() {
                     aria-current={item.date === todayDate ? "date" : undefined}
                     key={item.date}
                     onClick={() => openEditor(item.date)}
-                    aria-label={`${formatLongDate(item.date)}, jornada prevista ${formatMinutes(item.scheduledMinutes)}${data.holidays[item.date] ? `, festivo ${data.holidayCodes[item.date] ?? "DI"} ${data.holidays[item.date]}` : ""}. Editar día`}
+                    aria-label={`${formatLongDate(item.date)}, jornada prevista ${formatMinutes(item.scheduledMinutes)}${data.holidays[item.date] ? `, festivo ${data.holidayCodes[item.date] ?? "DI"} ${data.holidays[item.date]}` : ""}${item.record.observation?.trim() ? ", tiene observaciones" : ""}. Editar día`}
                   >
                     <span className="day-cell-heading">
                       <span className="day-number">{item.day}</span>
@@ -1102,10 +1170,17 @@ function App() {
                         ))}
                       </span>
                     )}
+                    {item.record.observation?.trim() && (
+                      <span className="day-observation" title={item.record.observation}>
+                        {item.record.observation}
+                      </span>
+                    )}
                     {!data.holidays[item.date] &&
                       item.record.activities.length === 0 &&
                       item.record.coverages.length === 0 && (
-                        <span className="empty-day-hint">+ Añadir</span>
+                        !item.record.observation?.trim() && (
+                          <span className="empty-day-hint">+ Añadir</span>
+                        )
                       )}
                   </button>
                 ) : (
@@ -1273,6 +1348,20 @@ function App() {
               {data.holidays[editingDate] && <span>Festivo: {data.holidays[editingDate]}</span>}
               {Object.prototype.hasOwnProperty.call(data.exceptions, editingDate) && <span>Excepción de jornada</span>}
             </div>
+            <label className="observation-field">
+              Observaciones del día
+              <textarea
+                aria-describedby="observation-help"
+                maxLength={MAX_DAY_OBSERVATION_LENGTH}
+                onChange={(event) => setDraftObservation(event.target.value)}
+                rows={3}
+                value={draftObservation}
+              />
+              <span className="observation-help" id="observation-help">
+                Se guarda solo en este navegador. No incluyas datos personales ni información médica.
+                {" "}{draftObservation.length}/{MAX_DAY_OBSERVATION_LENGTH}
+              </span>
+            </label>
             <label className="checkbox-label holiday-toggle">
               <input
                 type="checkbox"
