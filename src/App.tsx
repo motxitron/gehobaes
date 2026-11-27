@@ -30,6 +30,7 @@ import {
 import { extractHolidayDocument } from "./pdf-holidays";
 import type { HolidayImportEntry } from "./holiday-import";
 import { buildMonthlyReportHtml } from "./report";
+import { matchesEmployeeFilters } from "./employee-filters";
 
 const MONTHS = [
   "Enero",
@@ -56,6 +57,16 @@ const VISUAL_THEMES: { id: VisualTheme; label: string }[] = [
   { id: "compact", label: "B · Agenda compacta" },
   { id: "contrast", label: "C · Alto contraste accesible" },
 ];
+
+const EMPLOYEE_FILTER_COLUMNS = [
+  { key: "name", label: "Nombre" },
+  { key: "code", label: "Código de usuario" },
+  { key: "mondayToThursday", label: "Jornada L-J" },
+  { key: "fridaySummer", label: "Jornada V/Verano" },
+  { key: "domain", label: "Dominio funcional" },
+  { key: "role", label: "Rol" },
+  { key: "hspDomain", label: "Dominio HSP" },
+] as const;
 
 interface DemoEmployee {
   name: string;
@@ -323,6 +334,7 @@ function App() {
   } | null>(null);
   const [configurationOpen, setConfigurationOpen] = useState(false);
   const [employeesOpen, setEmployeesOpen] = useState(false);
+  const [employeeFilters, setEmployeeFilters] = useState<Record<string, string>>({});
   const [focusDate, setFocusDate] = useState<string | null>(null);
   const [focusRequest, setFocusRequest] = useState(0);
   const todayDate = getDateKey(today.getFullYear(), today.getMonth(), today.getDate());
@@ -359,6 +371,15 @@ function App() {
   }, [focusDate, focusRequest]);
 
   useEffect(() => {
+    setEmployeeFilters((current) => {
+      const entries = Object.entries(current).filter(([key]) => !isDateKey(key));
+      return entries.length === Object.keys(current).length
+        ? current
+        : Object.fromEntries(entries);
+    });
+  }, [month, year]);
+
+  useEffect(() => {
     if (
       !editingDate &&
       !holidayPreview.length &&
@@ -393,6 +414,53 @@ function App() {
     Object.keys(data.yearly).forEach((savedYear) => years.add(Number(savedYear)));
     return [...years].sort((a, b) => a - b);
   }, [data.yearly]);
+
+  const employeeDates = useMemo(
+    () =>
+      Array.from({ length: new Date(year, month + 1, 0).getDate() }, (_, index) =>
+        getDateKey(year, month, index + 1),
+      ),
+    [month, year],
+  );
+
+  const employeeRows = useMemo(
+    () =>
+      DEMO_EMPLOYEES.map((employee, employeeIndex) => {
+        const codesByDate: Record<string, string[]> = {};
+        const filterValues: Record<string, string> = {
+          name: employee.name,
+          code: employee.code,
+          mondayToThursday: formatMinutes(
+            employee.pilot
+              ? yearSettings.mondayToThursdayMinutes
+              : employee.mondayToThursdayMinutes,
+          ),
+          fridaySummer: formatMinutes(
+            employee.pilot
+              ? yearSettings.fridaySummerMinutes
+              : employee.fridaySummerMinutes,
+          ),
+          domain: employee.domain,
+          role: employee.role,
+          hspDomain: employee.hspDomain,
+        };
+        employeeDates.forEach((date) => {
+          const codes = getEmployeeDayCodes(employee, employeeIndex, date, data);
+          codesByDate[date] = codes;
+          filterValues[date] = codes.join(" ");
+        });
+        return { employee, codesByDate, filterValues };
+      }).filter(({ filterValues }) =>
+        matchesEmployeeFilters(filterValues, employeeFilters),
+      ),
+    [
+      data,
+      employeeDates,
+      employeeFilters,
+      yearSettings.fridaySummerMinutes,
+      yearSettings.mondayToThursdayMinutes,
+    ],
+  );
 
   const monthDays = useMemo(() => {
     const firstWeekday = (new Date(year, month, 1).getDay() + 6) % 7;
@@ -813,6 +881,19 @@ function App() {
     reportWindow.opener = null;
     window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
     setFormError("");
+  }
+
+  function updateEmployeeFilter(key: string, value: string) {
+    setEmployeeFilters((current) => {
+      const next = { ...current };
+      if (value.trim()) next[key] = value;
+      else delete next[key];
+      return next;
+    });
+  }
+
+  function clearEmployeeFilters() {
+    setEmployeeFilters({});
   }
 
   return (
@@ -1938,7 +2019,7 @@ function App() {
 
       {employeesOpen && (
         <div
-          className="dialog-backdrop"
+          className="dialog-backdrop employee-view-backdrop"
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setEmployeesOpen(false);
@@ -2005,42 +2086,88 @@ function App() {
                 </span>
               ))}
             </div>
+            <div className="employee-filter-toolbar">
+              <span role="status" aria-live="polite">
+                {employeeRows.length} de {DEMO_EMPLOYEES.length} empleados visibles
+              </span>
+              <button
+                className="secondary-button employee-filter-clear"
+                disabled={Object.keys(employeeFilters).length === 0}
+                onClick={clearEmployeeFilters}
+                type="button"
+              >
+                Limpiar filtros
+              </button>
+            </div>
             <div className="department-scroll">
               <table className="department-table" aria-label="Calendario mensual de empleados ficticios">
+                <colgroup>
+                  <col className="employee-name-column" />
+                  <col className="employee-code-column" />
+                  <col className="employee-hours-column" />
+                  <col className="employee-hours-column" />
+                  <col className="employee-domain-column" />
+                  <col className="employee-role-column" />
+                  <col className="employee-hsp-column" />
+                  {employeeDates.map((date) => (
+                    <col className="employee-day-column" key={date} />
+                  ))}
+                </colgroup>
                 <thead>
                   <tr>
-                    <th rowSpan={2}>Nombre</th>
-                    <th rowSpan={2}>Código de usuario</th>
-                    <th rowSpan={2}>L-J</th>
-                    <th rowSpan={2}>V/Verano</th>
-                    <th rowSpan={2}>Dominio funcional</th>
-                    <th rowSpan={2}>Rol</th>
-                    <th rowSpan={2}>Dominio HSP</th>
-                    {Array.from(
-                      { length: new Date(year, month + 1, 0).getDate() },
-                      (_, index) => {
-                        const weekday = (new Date(year, month, index + 1).getDay() + 6) % 7;
-                        return (
-                          <th className="employee-day-column" key={`weekday-${index}`}>
-                            {WEEKDAYS[weekday]}
-                          </th>
-                        );
-                      },
-                    )}
+                    {EMPLOYEE_FILTER_COLUMNS.map(({ key, label }) => (
+                      <th key={key} rowSpan={3}>{label}</th>
+                    ))}
+                    {employeeDates.map((date) => {
+                      const day = Number(date.slice(-2));
+                      const weekday = (new Date(year, month, day).getDay() + 6) % 7;
+                      return (
+                        <th className="employee-day-column" key={`weekday-${date}`}>
+                          {WEEKDAYS[weekday]}
+                        </th>
+                      );
+                    })}
                   </tr>
                   <tr>
-                    {Array.from(
-                      { length: new Date(year, month + 1, 0).getDate() },
-                      (_, index) => (
-                      <th className="employee-day-column" key={`date-${index}`}>{index + 1}</th>
-                      ),
-                    )}
+                    {employeeDates.map((date) => (
+                      <th className="employee-day-column" key={`date-${date}`}>
+                        {Number(date.slice(-2))}
+                      </th>
+                    ))}
+                  </tr>
+                  <tr className="employee-filter-row">
+                    {EMPLOYEE_FILTER_COLUMNS.map(({ key, label }) => (
+                      <th key={key}>
+                        <input
+                          aria-label={`Filtrar por ${label}`}
+                          onChange={(event) =>
+                            updateEmployeeFilter(key, event.target.value)
+                          }
+                          placeholder="Filtrar"
+                          type="search"
+                          value={employeeFilters[key] ?? ""}
+                        />
+                      </th>
+                    ))}
+                    {employeeDates.map((date) => (
+                      <th className="employee-day-column" key={`filter-${date}`}>
+                        <input
+                          aria-label={`Filtrar actividad del ${formatLongDate(date)}`}
+                          onChange={(event) =>
+                            updateEmployeeFilter(date, event.target.value)
+                          }
+                          placeholder="···"
+                          type="search"
+                          value={employeeFilters[date] ?? ""}
+                        />
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {DEMO_EMPLOYEES.map((employee, employeeIndex) => (
+                  {employeeRows.map(({ employee, codesByDate }) => (
                     <tr key={employee.code}>
-                      <th>{employee.name}</th>
+                      <th scope="row">{employee.name}</th>
                       <td>{employee.code}</td>
                       <td>
                         {formatMinutes(
@@ -2059,64 +2186,62 @@ function App() {
                       <td>{employee.domain}</td>
                       <td>{employee.role}</td>
                       <td>{employee.hspDomain}</td>
-                      {Array.from(
-                        { length: new Date(year, month + 1, 0).getDate() },
-                        (_, dayIndex) => {
-                          const date = getDateKey(year, month, dayIndex + 1);
-                          const codes = getEmployeeDayCodes(
-                            employee,
-                            employeeIndex,
-                            date,
-                            data,
-                          );
-                          const codeLabels = codes.map(
-                            (code) => `${code} · ${getEmployeeDayCodeLabel(code)}`,
-                          );
-                          const dayCodes = (
-                            <>
-                              {codes.length > 0 ? (
-                                codes.slice(0, 2).map((code, codeIndex) => (
-                                  <span
-                                    className={`employee-schedule-code ${getEmployeeDayCodeClass(code)}`}
-                                    key={`${code}-${codeIndex}`}
-                                    title={getEmployeeDayCodeLabel(code)}
-                                  >
-                                    {code}
-                                  </span>
-                                ))
-                              ) : (
-                                <span className="employee-empty-day" aria-hidden="true">·</span>
-                              )}
-                              {codes.length > 2 && (
-                                <span className="employee-day-overflow" aria-hidden="true">
-                                  +{codes.length - 2}
+                      {employeeDates.map((date) => {
+                        const codes = codesByDate[date];
+                        const codeLabels = codes.map(
+                          (code) => `${code} · ${getEmployeeDayCodeLabel(code)}`,
+                        );
+                        const dayCodes = (
+                          <>
+                            {codes.length > 0 ? (
+                              codes.slice(0, 2).map((code, codeIndex) => (
+                                <span
+                                  className={`employee-schedule-code ${getEmployeeDayCodeClass(code)}`}
+                                  key={`${code}-${codeIndex}`}
+                                  title={getEmployeeDayCodeLabel(code)}
+                                >
+                                  {code}
                                 </span>
-                              )}
-                            </>
-                          );
-                          return employee.pilot ? (
-                            <td className="employee-day-cell" key={`${employee.code}-${date}`}>
-                              <button
-                                aria-label={`Editar ${employee.name}, ${formatLongDate(date)}${codeLabels.length ? `: ${codeLabels.join(", ")}` : ""}`}
-                                className="employee-day-button"
-                                onClick={() => openEditor(date)}
-                                title={`Editar ${formatLongDate(date)}`}
-                                type="button"
-                              >
-                                {dayCodes}
-                              </button>
-                            </td>
-                          ) : (
-                            <td className="employee-day-cell" key={`${employee.code}-${date}`}>
-                              <span className="employee-day-display" aria-label={codeLabels.join(", ") || "Sin actividad"}>
-                                {dayCodes}
+                              ))
+                            ) : (
+                              <span className="employee-empty-day" aria-hidden="true">·</span>
+                            )}
+                            {codes.length > 2 && (
+                              <span className="employee-day-overflow" aria-hidden="true">
+                                +{codes.length - 2}
                               </span>
-                            </td>
-                          );
-                        },
-                      )}
+                            )}
+                          </>
+                        );
+                        return employee.pilot ? (
+                          <td className="employee-day-cell" key={`${employee.code}-${date}`}>
+                            <button
+                              aria-label={`Editar ${employee.name}, ${formatLongDate(date)}${codeLabels.length ? `: ${codeLabels.join(", ")}` : ""}`}
+                              className="employee-day-button"
+                              onClick={() => openEditor(date)}
+                              title={`Editar ${formatLongDate(date)}`}
+                              type="button"
+                            >
+                              {dayCodes}
+                            </button>
+                          </td>
+                        ) : (
+                          <td className="employee-day-cell" key={`${employee.code}-${date}`}>
+                            <span className="employee-day-display" aria-label={codeLabels.join(", ") || "Sin actividad"}>
+                              {dayCodes}
+                            </span>
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
+                  {employeeRows.length === 0 && (
+                    <tr>
+                      <td className="employee-no-results" colSpan={EMPLOYEE_FILTER_COLUMNS.length + employeeDates.length}>
+                        No hay empleados que coincidan con los filtros.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
