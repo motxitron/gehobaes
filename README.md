@@ -35,6 +35,7 @@ El workflow `.github/workflows/deploy-pages.yml` compila y publica `dist` en Git
 ## Datos y privacidad
 
 - El libro Excel de origen y cualquier fichero Excel quedan excluidos por `.gitignore`.
+- Los PDF fuente también quedan excluidos: el importador previsto los leerá localmente y no los subirá ni conservará.
 - La demostración contiene solo datos inventados; no copiar nombres, identificadores, turnos ni otros datos de empleados al repositorio.
 - El calendario de demostración se almacena en el navegador de quien lo usa. Borrar los datos del sitio elimina esos cambios.
 - Antes de manejar información real se requiere acordar identidad, backend, autorización en servidor, auditoría, retención y aprobación de seguridad y privacidad.
@@ -42,6 +43,7 @@ El workflow `.github/workflows/deploy-pages.yml` compila y publica `dist` en Git
 ## Proceso e hitos
 
 Consultar [Proceso de desarrollo e hitos](docs/PROCESO-Y-HITOS.md) para el flujo de Pull Requests, criterios de revisión y evolución propuesta.
+La especificación funcional del siguiente paso está en [Hito 2: gestión de horas](docs/HITO-2-GESTION-HORAS.md).
 
 ## Instrucciones para Copilot
 

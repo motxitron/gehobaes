@@ -5,6 +5,8 @@ dist/
 *.xlsx
 *.xls
 *.xlsm
+*.pdf
+.~lock.*#
 .env
 .env.*
 !.env.example

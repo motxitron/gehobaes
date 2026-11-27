@@ -101,20 +101,30 @@ No se deben subir cambios directamente a `main`. La plantilla del PR incluye una
 - Validar jornadas, calendario, permisos y cambios de perfil.
 - Mantener fixtures sintéticos para pruebas.
 
-### H2 — Identidad y permisos
+### H2 — Gestión de jornada por horas y bolsa de cobertura (especificación definida)
+
+- [x] Definir jornadas por empleado y año, actividades con duración, festivos, vacaciones, cobertura, bolsa y resumen mensual.
+- [x] Definir importación local y transitoria de PDF, con entrada manual alternativa.
+- [ ] Implementar el modelo anual, los formularios de horario, categorías, festivos y excepciones.
+- [ ] Implementar créditos y consumos de la bolsa sin permitir saldo negativo, expiración anual y remuneración solo en el periodo de verano.
+- [ ] Añadir edición y borrado de actividades, comprobaciones de jornada e informe mensual en ventana separada.
+- [ ] Validar la importación PDF en el navegador; nunca subir ni persistir el fichero original.
+- [ ] Completar los criterios de aceptación descritos en [la especificación del Hito 2](HITO-2-GESTION-HORAS.md).
+
+### H3 — Identidad y permisos
 
 - Elegir proveedor autorizado para autenticación, backend y base de datos.
 - Implementar permisos en el servidor: usuario normal sobre su propio perfil; administración de dominio/rol sobre el ámbito asignado; administrador total según política aprobada.
 - No confiar en controles de interfaz como barrera de seguridad. Añadir pruebas que intenten operaciones no autorizadas.
 - Revisar privacidad, seguridad, auditoría y gestión de credenciales antes de cargar datos reales.
 
-### H3 — Datos compartidos e historial
+### H4 — Datos compartidos e historial
 
 - Persistir cambios en una fuente común con control de concurrencia y zona horaria acordada.
 - Registrar quién cambió qué y cuándo, y definir retención y restauración.
 - Diseñar exportación/importación validada, con anonimización comprobable y confirmación previa.
 
-### H4 — Preparación para producción
+### H5 — Preparación para producción
 
 - Acordar operación, monitorización, copias, soporte y respuesta a incidentes.
 - Completar revisión de accesibilidad y pruebas en dispositivos/navegadores objetivo.
@@ -123,6 +133,7 @@ No se deben subir cambios directamente a `main`. La plantilla del PR incluye una
 ## Reglas para los datos del repositorio
 
 - Nunca incluir el Excel original ni copias, exportaciones o capturas con datos identificables.
+- Nunca incluir los PDF usados como fuente de festivos; el fichero se procesa solo en el navegador y se descarta.
 - Usar datos sintéticos, sin códigos de usuario reales ni combinaciones que permitan reidentificar personas.
 - Revisar archivos añadidos y cambios en fixtures antes de aprobar cada PR.
 - Las credenciales y secretos no se guardan en el código ni en `VITE_*`; esas variables se incorporan al bundle público.

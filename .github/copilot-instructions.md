@@ -9,7 +9,7 @@
 
 ## Flujo de trabajo
 
-- Lee `README.md`, `docs/PROCESO-Y-HITOS.md` y `docs/MANUAL-USO.md` cuando el cambio afecte a instalación, uso, arquitectura o proceso.
+- Lee `README.md`, `docs/PROCESO-Y-HITOS.md` y `docs/MANUAL-USO.md` cuando el cambio afecte a instalación, uso, arquitectura o proceso. Para reglas de horarios, coberturas o festivos, consulta también `docs/HITO-2-GESTION-HORAS.md`.
 - Trabaja desde `main` en una rama breve (`feat/`, `fix/` o `docs/`). No hagas commits ni pushes directamente a `main`.
 - Usa `.github/PULL_REQUEST_TEMPLATE.md`; mantén en castellano el título, cuerpo y conversación del PR.
 - Ejecuta `npm ci` si cambian las dependencias y `npm run build` para validar cambios de código.
