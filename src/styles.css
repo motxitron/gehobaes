@@ -150,6 +150,18 @@ h2 { color: #1c2940; }
 .profile-details dd { color: #29364d; font-weight: 600; text-align: right; }
 .tag { padding: 4px 8px; border-radius: 5px; font-size: 10px; font-weight: 700; }
 .tag-blue { color: #4c64d2; background: #eef1ff; }
+.profile-annual-summary { margin-top: 16px; padding-top: 13px; border-top: 1px solid var(--line); }
+.profile-annual-summary h3 { margin: 0 0 8px; color: #45536b; font-size: 10px; }
+.annual-summary-stats { display: grid; gap: 6px; margin: 0 0 14px; }
+.annual-summary-stats > div { display: flex; justify-content: space-between; gap: 8px; }
+.annual-summary-stats dt, .annual-summary-stats dd { margin: 0; font-size: 10px; }
+.annual-summary-stats dt { color: #7b879b; }
+.annual-summary-stats dd { color: #29364d; font-weight: 700; text-align: right; }
+.coverage-log { display: grid; max-height: 180px; gap: 5px; overflow-y: auto; margin: 0; padding: 0; list-style: none; }
+.coverage-log li { display: grid; gap: 4px; padding: 6px; border-radius: 6px; background: #f8f9fc; }
+.coverage-log li > strong { color: #53617a; font-size: 9px; }
+.coverage-log-details { display: flex; flex-wrap: wrap; gap: 2px; }
+.coverage-log-empty { color: #929daf; font-size: 9px; font-style: italic; }
 .profile-footnote { display: flex; align-items: center; gap: 7px; margin-top: 15px; padding-top: 12px; border-top: 1px solid var(--line); color: #8994a6; font-size: 10px; }
 .profile-footnote span { color: #6981e3; font-size: 15px; }
 
@@ -218,6 +230,7 @@ button.day-cell:hover { z-index: 1; outline: 1px solid #aebcf3; background: #fbf
 .bank-coverage, .legend-dot.bank-coverage { color: #4772d8; background: #edf3ff; }
 .paid-coverage, .legend-dot.paid-coverage { color: #27866d; background: #e8f7f1; }
 .legend-dot.holiday { color: #9b6b1f; background: #fff0c9; }
+.employee-schedule-code.holiday { color: #9b6b1f; background: #fff0c9; }
 
 .calendar-summary { display: flex; flex-wrap: wrap; gap: 10px 20px; padding: 10px 14px; border-bottom: 1px solid var(--line); color: #7f8ba0; font-size: 10px; }
 .calendar-summary strong { color: #394760; }
@@ -297,17 +310,31 @@ button.day-cell:hover { z-index: 1; outline: 1px solid #aebcf3; background: #fbf
 .holiday-editor-notice p { margin: 0 0 8px; }
 .holiday-editor-notice p:last-of-type { margin-bottom: 10px; }
 .department-scroll { max-height: 70vh; overflow: auto; margin-top: 13px; border: 1px solid var(--line); border-radius: 8px; }
-.department-table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 10px; }
+.department-table { width: max-content; min-width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 10px; }
 .department-table th, .department-table td { min-width: 34px; padding: 6px 5px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: center; }
-.department-table th:nth-child(-n+7), .department-table td:nth-child(-n+7) { min-width: 76px; }
+.department-table thead tr:first-child th:nth-child(-n+7), .department-table tbody td:nth-child(-n+7) { min-width: 76px; }
 .department-table tbody th:first-child { min-width: 150px; }
 .department-table thead th { background: #f7f8fc; color: #718098; font-size: 10px; text-transform: capitalize; }
 .department-table thead tr:first-child th { position: sticky; top: 0; z-index: 2; }
 .department-table thead tr:nth-child(2) th { position: sticky; top: 29px; z-index: 2; background: #f7f8fc; }
 .department-table tbody th:first-child { position: sticky; left: 0; z-index: 1; background: #fff; text-align: left; }
+.department-table th.employee-day-column, .department-table td.employee-day-cell { width: 44px; min-width: 44px; max-width: 44px; padding: 2px 1px; }
+.department-table tbody tr { height: 44px; }
 .employee-month-picker { display: flex; align-items: center; gap: 7px; color: #68758a; font-size: 10px; }
 .employee-month-picker select { height: 34px; padding: 0 8px; border: 1px solid #dfe5ef; border-radius: 6px; background: #fff; color: #29364d; font-size: 11px; }
 .employee-schedule-code { display: inline-block; min-width: 21px; margin: 1px; padding: 3px 4px; border-radius: 4px; font-size: 9px; font-weight: 700; }
+.employee-legend-title { margin: 11px 0 0; color: #53617a; font-size: 10px; font-weight: 700; }
+.employee-legend { display: flex; flex-wrap: wrap; gap: 6px 11px; margin-top: 6px; }
+.employee-legend-item { display: inline-flex; align-items: center; gap: 3px; color: #718098; font-size: 9px; white-space: nowrap; }
+.employee-legend-item .employee-schedule-code { margin: 0; }
+.employee-day-button, .employee-day-display { display: flex; width: 100%; height: 40px; flex-wrap: wrap; align-content: center; align-items: center; justify-content: center; gap: 0; overflow: hidden; padding: 0; }
+.employee-day-button { border: 0; border-radius: 4px; background: transparent; cursor: pointer; }
+.employee-day-button:hover { background: #eef2ff; }
+.employee-day-button:focus-visible { outline: 2px solid #4667e8; outline-offset: -2px; }
+.employee-day-button .employee-schedule-code, .employee-day-display .employee-schedule-code { min-width: 18px; margin: 0; padding: 2px 3px; font-size: 8px; line-height: 1.1; }
+.employee-day-overflow { color: #65728a; font-size: 8px; font-weight: 700; }
+.employee-empty-day { color: #c1c8d3; font-size: 10px; }
+.employee-edit-backdrop { z-index: 6; }
 .edit-dialog [hidden] { display: none !important; }
 
 @media (min-width: 1550px) {
@@ -341,6 +368,7 @@ button.day-cell:hover { z-index: 1; outline: 1px solid #aebcf3; background: #fbf
   .profile-divider, .profile-section-title, .profile-footnote { display: none; }
   .profile-details { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; margin-top: 11px; }
   .profile-details > div { align-items: center; margin: 0; padding: 4px 0; }
+  .profile-annual-summary { grid-column: 1 / -1; }
   .calendar-toolbar { min-height: 62px; align-items: flex-start; padding: 10px; }
   .month-title h2 { font-size: 14px; }
   .month-title p { max-width: 125px; line-height: 1.4; }

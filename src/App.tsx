@@ -239,6 +239,20 @@ function getEmployeeDayCodes(
   return [];
 }
 
+function getEmployeeDayCodeClass(code: string): string {
+  if (code === "CR") return "paid-coverage";
+  if (code === "C") return "bank-coverage";
+  if (isHolidayCode(code)) return "holiday";
+  return isActivityCode(code) ? ACTIVITY_DEFINITIONS[code].color : "";
+}
+
+function getEmployeeDayCodeLabel(code: string): string {
+  if (code === "CR") return "Cobertura remunerada";
+  if (code === "C") return "Cobertura a bolsa CD";
+  if (isHolidayCode(code)) return HOLIDAY_DEFINITIONS[code];
+  return isActivityCode(code) ? ACTIVITY_DEFINITIONS[code].label : code;
+}
+
 function App() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
@@ -377,6 +391,21 @@ function App() {
       total +
       (day && !data.holidays[day.date] ? day.record.coverages.length : 0),
     0,
+  );
+  const vacationDaysUsed = getVacationDaysUsed(data, year);
+  const vacationDaysRemaining = Math.max(
+    0,
+    yearSettings.vacationQuotaDays - vacationDaysUsed,
+  );
+  const annualCoverages = useMemo(
+    () =>
+      Object.entries(data.days)
+        .filter(
+          ([date, record]) =>
+            date.startsWith(`${year}-`) && record.coverages.length > 0,
+        )
+        .sort(([dateA], [dateB]) => dateA.localeCompare(dateB)),
+    [data.days, year],
   );
   const monthSummary = getMonthSummary(data, year, month);
   const summerConfigured = Boolean(yearSettings.summerStart && yearSettings.summerEnd);
@@ -941,6 +970,45 @@ function App() {
               <div><dt>Jornada L-J</dt><dd>{formatMinutes(yearSettings.mondayToThursdayMinutes)} h</dd></div>
               <div><dt>Viernes / verano</dt><dd>{formatMinutes(yearSettings.fridaySummerMinutes)} h</dd></div>
             </dl>
+            <section className="profile-annual-summary" aria-label={`Resumen anual de ${year}`}>
+              <h3>Resumen de {year}</h3>
+              <dl className="annual-summary-stats">
+                <div>
+                  <dt>Vacaciones totales</dt>
+                  <dd>{yearSettings.vacationQuotaDays} días</dd>
+                </div>
+                <div>
+                  <dt>Vacaciones restantes</dt>
+                  <dd>{vacationDaysRemaining} días</dd>
+                </div>
+                <div className="bank-balance-stat">
+                  <dt>Bolsa de horas restante</dt>
+                  <dd>{formatMinutes(getBankBalance(data, year))} h</dd>
+                </div>
+              </dl>
+              <h3>Coberturas realizadas</h3>
+              <ul className="coverage-log">
+                {annualCoverages.map(([date, record]) => (
+                  <li key={date}>
+                    <strong>{formatLongDate(date)}</strong>
+                    <span className="coverage-log-details">
+                      {record.coverages.map((coverage) => (
+                        <span
+                          className={`employee-schedule-code ${coverage.paid ? "paid-coverage" : "bank-coverage"}`}
+                          key={coverage.id}
+                          title={coverage.paid ? "Cobertura remunerada" : "Cobertura a bolsa CD"}
+                        >
+                          {coverage.paid ? "CR" : "C"} {formatMinutes(coverage.minutes)} h
+                        </span>
+                      ))}
+                    </span>
+                  </li>
+                ))}
+                {annualCoverages.length === 0 && (
+                  <li className="coverage-log-empty">No hay coberturas registradas este año.</li>
+                )}
+              </ul>
+            </section>
             <div className="profile-footnote">
               <span aria-hidden="true">◇</span>
               Perfil ficticio para el piloto
@@ -1186,7 +1254,7 @@ function App() {
 
       {editingDate && (
         <div
-          className="dialog-backdrop"
+          className={`dialog-backdrop${employeesOpen ? " employee-edit-backdrop" : ""}`}
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setEditingDate(null);
@@ -1827,6 +1895,27 @@ function App() {
             <p className="dialog-note">
               Vista general en formato de cuadrícula. Solo user1 usa datos guardados en este navegador; el resto son empleados ficticios de demostración, no una plantilla real de personal.
             </p>
+            <p className="employee-legend-title">Leyenda de categorías</p>
+            <div className="employee-legend" aria-label="Leyenda de categorías">
+              {Object.entries(ACTIVITY_DEFINITIONS).map(([code]) => (
+                <span className="employee-legend-item" key={code}>
+                  <span className={`employee-schedule-code ${getEmployeeDayCodeClass(code)}`}>
+                    {code}
+                  </span>
+                  {getEmployeeDayCodeLabel(code)}
+                </span>
+              ))}
+              <span className="employee-legend-item">
+                <span className="employee-schedule-code paid-coverage">CR</span>
+                Cobertura remunerada
+              </span>
+              {Object.entries(HOLIDAY_DEFINITIONS).map(([code, label]) => (
+                <span className="employee-legend-item" key={code}>
+                  <span className="employee-schedule-code holiday">{code}</span>
+                  {label}
+                </span>
+              ))}
+            </div>
             <div className="department-scroll">
               <table className="department-table" aria-label="Calendario mensual de empleados ficticios">
                 <thead>
@@ -1843,7 +1932,7 @@ function App() {
                       (_, index) => {
                         const weekday = (new Date(year, month, index + 1).getDay() + 6) % 7;
                         return (
-                          <th key={`weekday-${index}`}>
+                          <th className="employee-day-column" key={`weekday-${index}`}>
                             {WEEKDAYS[weekday]}
                           </th>
                         );
@@ -1854,7 +1943,7 @@ function App() {
                     {Array.from(
                       { length: new Date(year, month + 1, 0).getDate() },
                       (_, index) => (
-                        <th key={`date-${index}`}>{index + 1}</th>
+                      <th className="employee-day-column" key={`date-${index}`}>{index + 1}</th>
                       ),
                     )}
                   </tr>
@@ -1891,24 +1980,50 @@ function App() {
                             date,
                             data,
                           );
-                        return (
-                          <td key={`${employee.code}-${date}`}>
-                            {codes.map((code, codeIndex) => (
-                              <span
-                                className={`employee-schedule-code ${
-                                  code === "CR"
-                                    ? "paid-coverage"
-                                    : code === "C"
-                                      ? "bank-coverage"
-                                      : ACTIVITY_DEFINITIONS[code as ActivityCode]?.color ?? ""
-                                }`}
-                                key={`${code}-${codeIndex}`}
+                          const codeLabels = codes.map(
+                            (code) => `${code} · ${getEmployeeDayCodeLabel(code)}`,
+                          );
+                          const dayCodes = (
+                            <>
+                              {codes.length > 0 ? (
+                                codes.slice(0, 2).map((code, codeIndex) => (
+                                  <span
+                                    className={`employee-schedule-code ${getEmployeeDayCodeClass(code)}`}
+                                    key={`${code}-${codeIndex}`}
+                                    title={getEmployeeDayCodeLabel(code)}
+                                  >
+                                    {code}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="employee-empty-day" aria-hidden="true">·</span>
+                              )}
+                              {codes.length > 2 && (
+                                <span className="employee-day-overflow" aria-hidden="true">
+                                  +{codes.length - 2}
+                                </span>
+                              )}
+                            </>
+                          );
+                          return employee.pilot ? (
+                            <td className="employee-day-cell" key={`${employee.code}-${date}`}>
+                              <button
+                                aria-label={`Editar ${employee.name}, ${formatLongDate(date)}${codeLabels.length ? `: ${codeLabels.join(", ")}` : ""}`}
+                                className="employee-day-button"
+                                onClick={() => openEditor(date)}
+                                title={`Editar ${formatLongDate(date)}`}
+                                type="button"
                               >
-                                {code}
+                                {dayCodes}
+                              </button>
+                            </td>
+                          ) : (
+                            <td className="employee-day-cell" key={`${employee.code}-${date}`}>
+                              <span className="employee-day-display" aria-label={codeLabels.join(", ") || "Sin actividad"}>
+                                {dayCodes}
                               </span>
-                            ))}
-                          </td>
-                        );
+                            </td>
+                          );
                         },
                       )}
                     </tr>
