@@ -30,7 +30,10 @@ import {
 import { extractHolidayDocument } from "./pdf-holidays";
 import type { HolidayImportEntry } from "./holiday-import";
 import { buildMonthlyReportHtml } from "./report";
-import { matchesEmployeeFilters } from "./employee-filters";
+import {
+  matchesEmployeeFilters,
+  type EmployeeFilterKey,
+} from "./employee-filters";
 
 const MONTHS = [
   "Enero",
@@ -58,15 +61,21 @@ const VISUAL_THEMES: { id: VisualTheme; label: string }[] = [
   { id: "contrast", label: "C · Alto contraste accesible" },
 ];
 
-const EMPLOYEE_FILTER_COLUMNS = [
-  { key: "name", label: "Nombre" },
-  { key: "code", label: "Código de usuario" },
+interface EmployeeColumn {
+  key: string;
+  label: string;
+  filterKey?: EmployeeFilterKey;
+}
+
+const EMPLOYEE_COLUMNS: EmployeeColumn[] = [
+  { key: "name", label: "Nombre", filterKey: "name" },
+  { key: "code", label: "Código de usuario", filterKey: "code" },
   { key: "mondayToThursday", label: "Jornada L-J" },
   { key: "fridaySummer", label: "Jornada V/Verano" },
-  { key: "domain", label: "Dominio funcional" },
-  { key: "role", label: "Rol" },
-  { key: "hspDomain", label: "Dominio HSP" },
-] as const;
+  { key: "domain", label: "Dominio funcional", filterKey: "domain" },
+  { key: "role", label: "Rol", filterKey: "role" },
+  { key: "hspDomain", label: "Dominio HSP", filterKey: "hspDomain" },
+];
 
 interface DemoEmployee {
   name: string;
@@ -334,7 +343,9 @@ function App() {
   } | null>(null);
   const [configurationOpen, setConfigurationOpen] = useState(false);
   const [employeesOpen, setEmployeesOpen] = useState(false);
-  const [employeeFilters, setEmployeeFilters] = useState<Record<string, string>>({});
+  const [employeeFilters, setEmployeeFilters] = useState<
+    Partial<Record<EmployeeFilterKey, string>>
+  >({});
   const [focusDate, setFocusDate] = useState<string | null>(null);
   const [focusRequest, setFocusRequest] = useState(0);
   const todayDate = getDateKey(today.getFullYear(), today.getMonth(), today.getDate());
@@ -369,15 +380,6 @@ function App() {
   useEffect(() => {
     if (focusDate) document.getElementById(`day-${focusDate}`)?.focus();
   }, [focusDate, focusRequest]);
-
-  useEffect(() => {
-    setEmployeeFilters((current) => {
-      const entries = Object.entries(current).filter(([key]) => !isDateKey(key));
-      return entries.length === Object.keys(current).length
-        ? current
-        : Object.fromEntries(entries);
-    });
-  }, [month, year]);
 
   useEffect(() => {
     if (
@@ -430,16 +432,6 @@ function App() {
         const filterValues: Record<string, string> = {
           name: employee.name,
           code: employee.code,
-          mondayToThursday: formatMinutes(
-            employee.pilot
-              ? yearSettings.mondayToThursdayMinutes
-              : employee.mondayToThursdayMinutes,
-          ),
-          fridaySummer: formatMinutes(
-            employee.pilot
-              ? yearSettings.fridaySummerMinutes
-              : employee.fridaySummerMinutes,
-          ),
           domain: employee.domain,
           role: employee.role,
           hspDomain: employee.hspDomain,
@@ -447,7 +439,6 @@ function App() {
         employeeDates.forEach((date) => {
           const codes = getEmployeeDayCodes(employee, employeeIndex, date, data);
           codesByDate[date] = codes;
-          filterValues[date] = codes.join(" ");
         });
         return { employee, codesByDate, filterValues };
       }).filter(({ filterValues }) =>
@@ -457,8 +448,6 @@ function App() {
       data,
       employeeDates,
       employeeFilters,
-      yearSettings.fridaySummerMinutes,
-      yearSettings.mondayToThursdayMinutes,
     ],
   );
 
@@ -883,9 +872,9 @@ function App() {
     setFormError("");
   }
 
-  function updateEmployeeFilter(key: string, value: string) {
+  function updateEmployeeFilter(key: EmployeeFilterKey, value: string) {
     setEmployeeFilters((current) => {
-      const next = { ...current };
+      const next: Partial<Record<EmployeeFilterKey, string>> = { ...current };
       if (value.trim()) next[key] = value;
       else delete next[key];
       return next;
@@ -2115,8 +2104,8 @@ function App() {
                 </colgroup>
                 <thead>
                   <tr>
-                    {EMPLOYEE_FILTER_COLUMNS.map(({ key, label }) => (
-                      <th key={key} rowSpan={3}>{label}</th>
+                    {EMPLOYEE_COLUMNS.map(({ key, label }) => (
+                      <th key={key} rowSpan={2}>{label}</th>
                     ))}
                     {employeeDates.map((date) => {
                       const day = Number(date.slice(-2));
@@ -2136,30 +2125,19 @@ function App() {
                     ))}
                   </tr>
                   <tr className="employee-filter-row">
-                    {EMPLOYEE_FILTER_COLUMNS.map(({ key, label }) => (
+                    {EMPLOYEE_COLUMNS.map(({ key, label, filterKey }) => (
                       <th key={key}>
-                        <input
-                          aria-label={`Filtrar por ${label}`}
-                          onChange={(event) =>
-                            updateEmployeeFilter(key, event.target.value)
-                          }
-                          placeholder="Filtrar"
-                          type="search"
-                          value={employeeFilters[key] ?? ""}
-                        />
-                      </th>
-                    ))}
-                    {employeeDates.map((date) => (
-                      <th className="employee-day-column" key={`filter-${date}`}>
-                        <input
-                          aria-label={`Filtrar actividad del ${formatLongDate(date)}`}
-                          onChange={(event) =>
-                            updateEmployeeFilter(date, event.target.value)
-                          }
-                          placeholder="···"
-                          type="search"
-                          value={employeeFilters[date] ?? ""}
-                        />
+                        {filterKey && (
+                          <input
+                            aria-label={`Filtrar por ${label}`}
+                            onChange={(event) =>
+                              updateEmployeeFilter(filterKey, event.target.value)
+                            }
+                            placeholder="Filtrar"
+                            type="search"
+                            value={employeeFilters[filterKey] ?? ""}
+                          />
+                        )}
                       </th>
                     ))}
                   </tr>
@@ -2237,7 +2215,7 @@ function App() {
                   ))}
                   {employeeRows.length === 0 && (
                     <tr>
-                      <td className="employee-no-results" colSpan={EMPLOYEE_FILTER_COLUMNS.length + employeeDates.length}>
+                      <td className="employee-no-results" colSpan={EMPLOYEE_COLUMNS.length + employeeDates.length}>
                         No hay empleados que coincidan con los filtros.
                       </td>
                     </tr>
