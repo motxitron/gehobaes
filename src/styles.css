@@ -341,7 +341,6 @@ button.day-cell:hover { z-index: 1; outline: 1px solid #aebcf3; background: #fbf
 .department-table tbody tr { height: 36px; }
 .department-table .employee-filter-row input { width: 100%; min-width: 0; height: 24px; padding: 0 3px; border: 1px solid #dfe5ef; border-radius: 4px; background: #fff; color: #29364d; font: inherit; font-size: 9px; }
 .department-table .employee-filter-row input::placeholder { color: #9aa4b3; }
-.department-table .employee-filter-row .employee-day-column input { padding: 0; text-align: center; }
 .employee-no-results { height: 90px; color: #8792a4; text-align: center !important; }
 .employee-month-picker { display: flex; align-items: center; gap: 7px; color: #68758a; font-size: 10px; }
 .employee-month-picker select { height: 34px; padding: 0 8px; border: 1px solid #dfe5ef; border-radius: 6px; background: #fff; color: #29364d; font-size: 11px; }
