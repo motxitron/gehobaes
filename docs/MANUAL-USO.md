@@ -12,6 +12,8 @@ Visita <https://motxitron.github.io/gehobaes/>. El calendario muestra el año y 
 
 Cada celda indica la jornada prevista y las actividades o coberturas del día. Los fines de semana y festivos empiezan con jornada cero. Selecciona una fecha para editarla.
 
+En el perfil de la pantalla principal se muestra, para el año seleccionado, el cupo total y los días de vacaciones restantes, el saldo de la bolsa y el detalle de coberturas realizadas con su fecha, tipo y duración. Cada día marcado como `X` reduce los días restantes.
+
 ## Configurar la jornada anual
 
 Pulsa **Configuración de horario** para abrir los ajustes del año seleccionado. Define las horas de lunes a jueves, las horas de viernes/verano, las fechas inicial y final del verano y el cupo anual de vacaciones. Las fechas del verano son inclusivas. Los viernes usan la jornada de viernes/verano durante todo el año; de lunes a jueves solo se usa durante el periodo indicado. Fuera de ese periodo, esos días usan la jornada L-J.
@@ -53,7 +55,7 @@ Los festivos aplican jornada cero y no admiten actividades ni coberturas. Para t
 
 El informe, abierto en otra pestaña, contiene jornada prevista, trabajo sin categoría, totales por actividad con horas positivas, horas extra de cobertura, movimientos y saldos de la bolsa, y detalle diario. Las actividades repetidas del mismo código se consolidan. Desde el botón de impresión del informe se puede imprimir o guardarlo como PDF.
 
-**Todos los empleados** abre una cuadrícula del mes seleccionado con una columna por día y los datos de jornada, dominio y rol como columnas fijas. `user1` muestra los datos guardados en este navegador; las otras 17 filas son empleados ficticios de demostración. El piloto aún no tiene un censo real ni sincroniza perfiles de empleados.
+**Todos los empleados** abre una cuadrícula del mes seleccionado con una columna por día y los datos de jornada, dominio y rol como columnas fijas, además de una leyenda de categorías. Selecciona una celda de `user1` para abrir el editor diario y registrar las mismas actividades, ausencias, vacaciones o coberturas que desde el calendario individual. El perfil piloto puede editar todas sus fechas; los otros perfiles no son editables porque son ficticios. `user1` muestra los datos guardados en este navegador; las otras 17 filas no son un censo real y no se sincronizan con empleados.
 
 ## Guardado y recuperación
 
