@@ -26,7 +26,7 @@ npm run preview
 
 ## Publicación
 
-El workflow `.github/workflows/deploy-pages.yml` compila y publica `dist` en GitHub Pages al actualizar `main`. En el repositorio, activar **Settings → Pages → Build and deployment → GitHub Actions**. La URL prevista para un repositorio llamado `motxitron` será `https://<propietario>.github.io/motxitron/`.
+El workflow `.github/workflows/deploy-pages.yml` compila y publica `dist` en GitHub Pages al actualizar `main`. En el repositorio, activar **Settings → Pages → Build and deployment → GitHub Actions**. La aplicación está publicada en `https://motxitron.github.io/gehobaes/`.
 
 ## Datos y privacidad
 
