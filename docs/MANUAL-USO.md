@@ -27,7 +27,7 @@ La ventana también reúne festivos, importación de ficheros y excepciones de j
 5. El código `C` se registra en **Cobertura extra**, fuera de la jornada: no resta horas del día y, sin remunerar, añade esas horas a la bolsa `CD`. Al marcar un bloque como remunerado, se registra como `CR`; `CR` solo se permite dentro del periodo de verano configurado. Pulsa **Guardar día** para aplicar los movimientos a la bolsa.
 6. `CD` consume el saldo disponible y reduce el tiempo restante de trabajo del día. No se puede dejar la bolsa en negativo. El saldo solo se puede usar dentro del mismo año natural y caduca al acabar el año.
 7. Elimina o ajusta cada actividad o bloque individualmente y pulsa **Guardar día**. Si la edición deja una jornada o saldo inválidos, se explica el motivo y no se guarda.
-8. En el editor puedes marcar o desmarcar el día como festivo. Si ya hay actividades incompatibles con la jornada cero, primero tendrás que quitarlas o definir una excepción.
+8. En el editor puedes marcar o desmarcar el día como festivo. Al marcarlo desaparecen las opciones de actividades y coberturas; los registros que ya existían deben eliminarse explícitamente antes de guardar. El festivo prevalece sobre una excepción de jornada y deja las horas previstas a cero.
 
 `LD` y `AR` son actividades normales y no consumen la bolsa. El resumen no calcula importes de nómina.
 
@@ -47,13 +47,13 @@ También se pueden importar ficheros CSV, XLS, XLSX o PDF desde el dispositivo:
 - Confirma solo los datos correctos. Se guardan los festivos confirmados y, si se acepta, el periodo intensivo; nunca los ficheros fuente.
 - El resultado o el error de lectura aparece junto al selector del PDF. Los documentos escaneados sin texto seleccionable no se pueden reconocer automáticamente; usa la entrada manual.
 
-Los festivos aplican jornada cero. Si se trabaja un fin de semana o festivo, registra primero una **Excepción de jornada** con la fecha y las horas previstas. La excepción prevalece sobre el patrón semanal y permite luego añadir actividades al día.
+Los festivos aplican jornada cero y no admiten actividades ni coberturas. Para trabajar ese día, quita primero la marca de festivo. Las **Excepciones de jornada** sirven para fines de semana y fechas no festivas; prevalecen sobre el patrón semanal.
 
 ## Informe mensual
 
 El informe, abierto en otra pestaña, contiene jornada prevista, trabajo sin categoría, totales por actividad con horas positivas, horas extra de cobertura, movimientos y saldos de la bolsa, y detalle diario. Las actividades repetidas del mismo código se consolidan. Desde el botón de impresión del informe se puede imprimir o guardarlo como PDF.
 
-**Vista del departamento** abre una cuadrícula mensual con desplazamiento horizontal. `user1` muestra los datos guardados en este navegador; las filas restantes son ejemplos ficticios anónimos, no personas ni horarios reales.
+**Todos los empleados** abre una cuadrícula del mes seleccionado con una columna por día y los datos de jornada, dominio y rol como columnas fijas. `user1` muestra los datos guardados en este navegador; las otras 17 filas son empleados ficticios de demostración. El piloto aún no tiene un censo real ni sincroniza perfiles de empleados.
 
 ## Guardado y recuperación
 

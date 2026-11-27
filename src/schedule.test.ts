@@ -24,13 +24,30 @@ describe("reglas de jornada", () => {
     expect(getScheduledMinutes("2026-09-04", data)).toBe(420);
   });
 
-  it("deja en cero fines de semana y festivos salvo excepción explícita", () => {
+  it("deja en cero fines de semana y festivos, que prevalecen sobre excepciones", () => {
     const data = createEmptySchedule(2026);
     data.holidays["2026-06-01"] = "Festivo";
     expect(getScheduledMinutes("2026-06-01", data)).toBe(0);
     expect(getScheduledMinutes("2026-06-06", data)).toBe(0);
     data.exceptions["2026-06-01"] = 180;
-    expect(getScheduledMinutes("2026-06-01", data)).toBe(180);
+    expect(getScheduledMinutes("2026-06-01", data)).toBe(0);
+    data.holidays["2026-06-02"] = "Día especial";
+    data.exceptions["2026-06-02"] = 180;
+    expect(getScheduledMinutes("2026-06-02", data)).toBe(0);
+    expect(getScheduledMinutes("2026-06-03", { ...data, holidays: {} })).toBe(540);
+  });
+
+  it("rechaza actividades y coberturas en un día festivo", () => {
+    const data = createEmptySchedule(2026);
+    data.holidays["2026-06-01"] = "Festivo";
+    const record = {
+      activities: [{ id: "f", code: "F" as const, minutes: 60 }],
+      coverages: [{ id: "c", minutes: 60, paid: false }],
+    };
+
+    expect(validateDayRecord("2026-06-01", record, data)).toContain(
+      "no admite actividades ni coberturas",
+    );
   });
 
   it("exige que X ocupe toda la jornada sin combinarse", () => {

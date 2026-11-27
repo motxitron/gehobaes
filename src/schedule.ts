@@ -268,10 +268,11 @@ export function getScheduledMinutes(
   date: DateKey,
   data: ScheduleData,
 ): number {
+  if (hasOwn(data.holidays, date)) return 0;
   if (hasOwn(data.exceptions, date)) return data.exceptions[date];
   const [year, month, day] = date.split("-").map(Number);
   const weekday = new Date(year, month - 1, day).getDay();
-  if (weekday === 0 || weekday === 6 || hasOwn(data.holidays, date)) {
+  if (weekday === 0 || weekday === 6) {
     return 0;
   }
   const settings = getYearSettings(data, year);
@@ -349,6 +350,12 @@ export function validateDayRecord(
   data: ScheduleData,
 ): string | null {
   if (!isDateKey(date)) return "La fecha indicada no es válida.";
+  if (
+    hasOwn(data.holidays, date) &&
+    (record.activities.length > 0 || record.coverages.length > 0)
+  ) {
+    return "Un día festivo no admite actividades ni coberturas.";
+  }
   if (
     record.activities.some(
       (activity) =>

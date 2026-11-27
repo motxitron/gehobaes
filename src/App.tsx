@@ -45,16 +45,40 @@ const MONTHS = [
   "Diciembre",
 ];
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-const DEPARTMENT_USERS = [
-  "user1",
-  "Usuario anónimo 02",
-  "Usuario anónimo 03",
-  "Usuario anónimo 04",
-  "Usuario anónimo 05",
-  "Usuario anónimo 06",
-  "Usuario anónimo 07",
-];
 const STORAGE_KEY = "motxitron-schedule-v2";
+
+interface DemoEmployee {
+  name: string;
+  code: string;
+  mondayToThursdayMinutes: number;
+  fridaySummerMinutes: number;
+  domain: string;
+  role: string;
+  hspDomain: string;
+  pilot?: boolean;
+}
+
+const DEMO_EMPLOYEES: DemoEmployee[] = [
+  {
+    name: "Usuario piloto",
+    code: "user1",
+    mondayToThursdayMinutes: 540,
+    fridaySummerMinutes: 420,
+    domain: "Dominio de ejemplo",
+    role: "Perfil piloto",
+    hspDomain: "—",
+    pilot: true,
+  },
+  ...Array.from({ length: 17 }, (_, index) => ({
+    name: `Empleado anónimo ${String(index + 2).padStart(2, "0")}`,
+    code: `DEMO-${String(index + 2).padStart(2, "0")}`,
+    mondayToThursdayMinutes: [540, 510, 480, 495][index % 4],
+    fridaySummerMinutes: [420, 390, 420, 360][index % 4],
+    domain: `Área ficticia ${String.fromCharCode(65 + (index % 4))}`,
+    role: "Rol de demostración",
+    hspDomain: "—",
+  })),
+];
 
 interface StoredSchedule {
   data: ScheduleData;
@@ -188,6 +212,33 @@ function formatLongDate(date: string): string {
   });
 }
 
+function getEmployeeDayCodes(
+  employee: DemoEmployee,
+  employeeIndex: number,
+  date: string,
+  data: ScheduleData,
+): string[] {
+  if (employee.pilot) {
+    if (data.holidays[date]) return [data.holidayCodes[date] ?? "DI"];
+    const record = data.days[date];
+    return record
+      ? [
+          ...record.activities.map((activity) => activity.code),
+          ...record.coverages.map((coverage) => (coverage.paid ? "CR" : "C")),
+        ]
+      : [];
+  }
+  const [year, month, day] = date.split("-").map(Number);
+  const weekday = new Date(year, month - 1, day).getDay();
+  if (weekday === 0 || weekday === 6) return [];
+  const pattern = (day + employeeIndex * 3) % 23;
+  if (pattern === 1) return ["X"];
+  if (pattern === 4) return ["F"];
+  if (pattern === 9) return ["LD"];
+  if (pattern === 15) return ["C"];
+  return [];
+}
+
 function App() {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
@@ -226,11 +277,24 @@ function App() {
     end: string;
   } | null>(null);
   const [configurationOpen, setConfigurationOpen] = useState(false);
-  const [departmentOpen, setDepartmentOpen] = useState(false);
+  const [employeesOpen, setEmployeesOpen] = useState(false);
   const [focusDate, setFocusDate] = useState<string | null>(null);
   const [focusRequest, setFocusRequest] = useState(0);
   const todayDate = getDateKey(today.getFullYear(), today.getMonth(), today.getDate());
   const yearSettings = getYearSettings(data, year);
+  const editorSchedule = useMemo(() => {
+    if (!editingDate) return data;
+    const holidays = { ...data.holidays };
+    if (draftHoliday) {
+      holidays[editingDate] = data.holidays[editingDate] ?? "";
+    } else {
+      delete holidays[editingDate];
+    }
+    return { ...data, holidays };
+  }, [data, draftHoliday, editingDate]);
+  const editorScheduledMinutes = editingDate
+    ? getScheduledMinutes(editingDate, editorSchedule)
+    : 0;
 
   useEffect(() => {
     try {
@@ -255,7 +319,7 @@ function App() {
       !holidayPreview.length &&
       !pdfSummerPeriod &&
       !configurationOpen &&
-      !departmentOpen
+      !employeesOpen
     ) return;
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -263,14 +327,14 @@ function App() {
         setHolidayPreview([]);
         setPdfSummerPeriod(null);
         setConfigurationOpen(false);
-        setDepartmentOpen(false);
+        setEmployeesOpen(false);
       }
     }
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [
     configurationOpen,
-    departmentOpen,
+    employeesOpen,
     editingDate,
     holidayPreview.length,
     pdfSummerPeriod,
@@ -309,7 +373,9 @@ function App() {
         data.holidays[day.date]),
   ).length;
   const coverageCount = monthDays.reduce(
-    (total, day) => total + (day?.record.coverages.length ?? 0),
+    (total, day) =>
+      total +
+      (day && !data.holidays[day.date] ? day.record.coverages.length : 0),
     0,
   );
   const monthSummary = getMonthSummary(data, year, month);
@@ -348,7 +414,11 @@ function App() {
 
   function addActivity() {
     if (!editingDate) return;
-    const planned = getScheduledMinutes(editingDate, data);
+    if (draftHoliday) {
+      setFormError("No se pueden registrar actividades en un día festivo.");
+      return;
+    }
+    const planned = editorScheduledMinutes;
     const minutes =
       newActivityCode === "X" ? planned : parseTimeInput(newActivityTime);
     if (minutes === null || minutes <= 0) {
@@ -381,6 +451,12 @@ function App() {
 
   function saveDay() {
     if (!editingDate) return;
+    if (draftHoliday && (draftActivities.length > 0 || draftCoverages.length > 0)) {
+      setFormError(
+        "El día tiene registros horarios. Elimínalos antes de guardarlo como festivo.",
+      );
+      return;
+    }
     const record: DayRecord = {
       activities: mergeActivitiesByCode(draftActivities),
       coverages: draftCoverages,
@@ -399,7 +475,7 @@ function App() {
       delete next.holidays[editingDate];
       delete next.holidayCodes[editingDate];
     }
-    if (record.activities.length || record.coverages.length) {
+    if (!draftHoliday && (record.activities.length || record.coverages.length)) {
       next.days[editingDate] = record;
     } else {
       delete next.days[editingDate];
@@ -472,6 +548,10 @@ function App() {
     const minutes = parseTimeInput(exceptionTime);
     if (!isDateKey(exceptionDate) || Number(exceptionDate.slice(0, 4)) !== year) {
       setFormError("Selecciona una fecha válida del año elegido.");
+      return;
+    }
+    if (data.holidays[exceptionDate]) {
+      setFormError("Quita primero la marca de festivo para crear una excepción de jornada.");
       return;
     }
     if (minutes === null) {
@@ -720,9 +800,9 @@ function App() {
             <button
               type="button"
               className="secondary-button"
-              onClick={() => setDepartmentOpen(true)}
+              onClick={() => setEmployeesOpen(true)}
             >
-              Vista del departamento
+              Todos los empleados
             </button>
           </div>
         </section>
@@ -916,7 +996,7 @@ function App() {
                     {data.holidays[item.date] && (
                       <span className="holiday-label">{data.holidayCodes[item.date] ?? "DI"} · {data.holidays[item.date]}</span>
                     )}
-                    {item.record.activities.length > 0 && (
+                    {!data.holidays[item.date] && item.record.activities.length > 0 && (
                       <span className="activity-list">
                         {item.record.activities.map((activity) => (
                           <span
@@ -929,7 +1009,7 @@ function App() {
                         ))}
                       </span>
                     )}
-                    {item.record.activities.length > 0 && (
+                    {!data.holidays[item.date] && item.record.activities.length > 0 && (
                       <span className="remaining-time">
                         Restante{" "}
                         {formatMinutes(
@@ -944,7 +1024,7 @@ function App() {
                         )}
                       </span>
                     )}
-                    {item.record.coverages.length > 0 && (
+                    {!data.holidays[item.date] && item.record.coverages.length > 0 && (
                       <span className="activity-list">
                         {item.record.coverages.map((coverage) => (
                           <span className={`activity-chip ${coverage.paid ? "paid-coverage" : "bank-coverage"}`} key={coverage.id}>
@@ -954,7 +1034,8 @@ function App() {
                         ))}
                       </span>
                     )}
-                    {item.record.activities.length === 0 &&
+                    {!data.holidays[item.date] &&
+                      item.record.activities.length === 0 &&
                       item.record.coverages.length === 0 && (
                         <span className="empty-day-hint">+ Añadir</span>
                       )}
@@ -1120,7 +1201,7 @@ function App() {
               <button aria-label="Cerrar" className="dialog-close" onClick={() => setEditingDate(null)} type="button">×</button>
             </div>
             <div className="day-context">
-              <span>Jornada prevista: <strong>{formatMinutes(getScheduledMinutes(editingDate, data))}</strong></span>
+              <span>Jornada prevista: <strong>{formatMinutes(editorScheduledMinutes)}</strong></span>
               {data.holidays[editingDate] && <span>Festivo: {data.holidays[editingDate]}</span>}
               {Object.prototype.hasOwnProperty.call(data.exceptions, editingDate) && <span>Excepción de jornada</span>}
             </div>
@@ -1145,8 +1226,29 @@ function App() {
                 </select>
               </label>
             )}
-            <h3>Actividades de la jornada</h3>
-            <div className="draft-list">
+            {draftHoliday && (
+              <div className="holiday-editor-notice">
+                <p>En los días festivos no se permite añadir actividades ni coberturas.</p>
+                {(draftActivities.length > 0 || draftCoverages.length > 0) && (
+                  <>
+                    <p>Este día conserva registros anteriores. Elimínalos explícitamente antes de guardarlo como festivo.</p>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      onClick={() => {
+                        setDraftActivities([]);
+                        setDraftCoverages([]);
+                        setFormError("");
+                      }}
+                    >
+                      Eliminar registros del día
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+            <h3 hidden={draftHoliday}>Actividades de la jornada</h3>
+            <div className="draft-list" hidden={draftHoliday}>
               {draftActivities.map((activity) => (
                 <div className="draft-row" key={activity.id}>
                   <label>
@@ -1163,7 +1265,7 @@ function App() {
                                   code,
                                   minutes:
                                     code === "X"
-                                      ? getScheduledMinutes(editingDate, data)
+                                      ? editorScheduledMinutes
                                       : item.minutes,
                                 }
                               : item,
@@ -1202,7 +1304,7 @@ function App() {
               ))}
               {draftActivities.length === 0 && <p className="empty-list">No hay actividades registradas.</p>}
             </div>
-            <div className="add-row">
+            <div className="add-row" hidden={draftHoliday}>
               <label>
                 Nueva actividad
                 <select value={newActivityCode} onChange={(event) => setNewActivityCode(event.target.value as Exclude<ActivityCode, "C">)}>
@@ -1219,7 +1321,7 @@ function App() {
               </label>
               <button type="button" className="secondary-button" onClick={addActivity}>Añadir</button>
             </div>
-            {draftActivities.some((activity) => activity.code === "CD") && (
+            {!draftHoliday && draftActivities.some((activity) => activity.code === "CD") && (
               <p className="dialog-note">
                 Saldo CD antes del día: {formatMinutes(
                   getBankBalance(data, Number(editingDate.slice(0, 4)), editingDate) +
@@ -1228,8 +1330,8 @@ function App() {
               </p>
             )}
 
-            <h3>Cobertura extra (C / CR), fuera de jornada</h3>
-            <div className="draft-list">
+            <h3 hidden={draftHoliday}>Cobertura extra (C / CR), fuera de jornada</h3>
+            <div className="draft-list" hidden={draftHoliday}>
               {draftCoverages.map((coverage) => (
                 <div className="draft-row coverage-row" key={coverage.id}>
                   <span>{coverage.paid ? "CR · Remunerada" : "C · Añadida a la bolsa CD"}</span>
@@ -1256,7 +1358,7 @@ function App() {
               ))}
               {draftCoverages.length === 0 && <p className="empty-list">No hay coberturas extra.</p>}
             </div>
-            <div className="add-row">
+            <div className="add-row" hidden={draftHoliday}>
               <label>
                 Duración extra
                 <input type="time" step="60" value={newCoverageTime} onChange={(event) => setNewCoverageTime(event.target.value)} />
@@ -1274,6 +1376,10 @@ function App() {
                 type="button"
                 className="secondary-button"
                 onClick={() => {
+                  if (draftHoliday) {
+                    setFormError("No se pueden registrar coberturas en un día festivo.");
+                    return;
+                  }
                   const minutes = parseTimeInput(newCoverageTime);
                   if (minutes === null || minutes <= 0) {
                     setFormError("Indica una duración de cobertura superior a cero.");
@@ -1294,11 +1400,11 @@ function App() {
                 Añadir
               </button>
             </div>
-            <p className="dialog-note">
+            {!draftHoliday && <p className="dialog-note">
               Saldo CD tras guardar: {formatMinutes(draftBankBalance)}. Los
               cambios de la bolsa se aplican al pulsar «Guardar día».
-            </p>
-            {!isPaidCoverageAllowed && (
+            </p>}
+            {!draftHoliday && !isPaidCoverageAllowed && (
               <p className="dialog-note">CR solo está disponible dentro del periodo anual de verano.</p>
             )}
 
@@ -1640,7 +1746,7 @@ function App() {
 
               <div className="management-card">
                 <h2>Excepciones de jornada</h2>
-                <p className="management-description">Define horas para trabajar en fines de semana o festivos. La excepción prevalece sobre la jornada habitual.</p>
+                <p className="management-description">Define horas para trabajar en fines de semana y fechas no festivas. Un festivo marcado siempre mantiene jornada cero.</p>
                 <form
                   className="inline-form exception-form"
                   onSubmit={(event) => {
@@ -1673,12 +1779,12 @@ function App() {
         </div>
       )}
 
-      {departmentOpen && (
+      {employeesOpen && (
         <div
           className="dialog-backdrop"
           role="presentation"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setDepartmentOpen(false);
+            if (event.target === event.currentTarget) setEmployeesOpen(false);
           }}
         >
           <section
@@ -1690,38 +1796,121 @@ function App() {
             <div className="dialog-heading">
               <div>
                 <p className="eyebrow">VISTA DE DEMOSTRACIÓN</p>
-                <h2 id="department-title">Calendario del departamento · {year}</h2>
+                <h2 id="department-title">Calendario de todos los empleados · {year}</h2>
               </div>
-              <button aria-label="Cerrar vista" className="dialog-close" onClick={() => setDepartmentOpen(false)} type="button">×</button>
+              <label className="employee-month-picker">
+                Mes
+                <select
+                  aria-label="Mes del calendario de empleados"
+                  value={month}
+                  onChange={(event) => setMonth(Number(event.target.value))}
+                >
+                  {MONTHS.map((name, index) => (
+                    <option key={name} value={index}>{name}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="employee-month-picker">
+                Año
+                <select
+                  aria-label="Año del calendario de empleados"
+                  value={year}
+                  onChange={(event) => setYear(Number(event.target.value))}
+                >
+                  {yearOptions.map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </label>
+              <button aria-label="Cerrar vista" className="dialog-close" onClick={() => setEmployeesOpen(false)} type="button">×</button>
             </div>
             <p className="dialog-note">
-              Las filas anónimas son datos ficticios de ejemplo. La primera fila muestra el calendario local de user1.
+              Vista general en formato de cuadrícula. Solo user1 usa datos guardados en este navegador; el resto son empleados ficticios de demostración, no una plantilla real de personal.
             </p>
             <div className="department-scroll">
-              <table className="department-table">
+              <table className="department-table" aria-label="Calendario mensual de empleados ficticios">
                 <thead>
                   <tr>
-                    <th>Persona</th>
-                    {MONTHS.map((name) => <th key={name}>{name.slice(0, 3)}</th>)}
+                    <th rowSpan={2}>Nombre</th>
+                    <th rowSpan={2}>Código de usuario</th>
+                    <th rowSpan={2}>L-J</th>
+                    <th rowSpan={2}>V/Verano</th>
+                    <th rowSpan={2}>Dominio funcional</th>
+                    <th rowSpan={2}>Rol</th>
+                    <th rowSpan={2}>Dominio HSP</th>
+                    {Array.from(
+                      { length: new Date(year, month + 1, 0).getDate() },
+                      (_, index) => {
+                        const weekday = (new Date(year, month, index + 1).getDay() + 6) % 7;
+                        return (
+                          <th key={`weekday-${index}`}>
+                            {WEEKDAYS[weekday]}
+                          </th>
+                        );
+                      },
+                    )}
+                  </tr>
+                  <tr>
+                    {Array.from(
+                      { length: new Date(year, month + 1, 0).getDate() },
+                      (_, index) => (
+                        <th key={`date-${index}`}>{index + 1}</th>
+                      ),
+                    )}
                   </tr>
                 </thead>
                 <tbody>
-                  {DEPARTMENT_USERS.map((user, userIndex) => (
-                    <tr key={user}>
-                      <th>{user}</th>
-                      {MONTHS.map((name, monthIndex) => {
-                        const summary = getMonthSummary(data, year, monthIndex);
-                        const fakeDays = 18 + ((userIndex + monthIndex) % 4);
+                  {DEMO_EMPLOYEES.map((employee, employeeIndex) => (
+                    <tr key={employee.code}>
+                      <th>{employee.name}</th>
+                      <td>{employee.code}</td>
+                      <td>
+                        {formatMinutes(
+                          employee.pilot
+                            ? yearSettings.mondayToThursdayMinutes
+                            : employee.mondayToThursdayMinutes,
+                        )}
+                      </td>
+                      <td>
+                        {formatMinutes(
+                          employee.pilot
+                            ? yearSettings.fridaySummerMinutes
+                            : employee.fridaySummerMinutes,
+                        )}
+                      </td>
+                      <td>{employee.domain}</td>
+                      <td>{employee.role}</td>
+                      <td>{employee.hspDomain}</td>
+                      {Array.from(
+                        { length: new Date(year, month + 1, 0).getDate() },
+                        (_, dayIndex) => {
+                          const date = getDateKey(year, month, dayIndex + 1);
+                          const codes = getEmployeeDayCodes(
+                            employee,
+                            employeeIndex,
+                            date,
+                            data,
+                          );
                         return (
-                          <td key={`${user}-${name}`}>
-                            <span className={userIndex === 0 ? "department-hours" : "department-sample"}>
-                              {userIndex === 0
-                                ? formatMinutes(summary.scheduledMinutes)
-                                : `${fakeDays} d`}
-                            </span>
+                          <td key={`${employee.code}-${date}`}>
+                            {codes.map((code, codeIndex) => (
+                              <span
+                                className={`employee-schedule-code ${
+                                  code === "CR"
+                                    ? "paid-coverage"
+                                    : code === "C"
+                                      ? "bank-coverage"
+                                      : ACTIVITY_DEFINITIONS[code as ActivityCode]?.color ?? ""
+                                }`}
+                                key={`${code}-${codeIndex}`}
+                              >
+                                {code}
+                              </span>
+                            ))}
                           </td>
                         );
-                      })}
+                        },
+                      )}
                     </tr>
                   ))}
                 </tbody>

@@ -12,6 +12,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 
 body {
   min-width: 360px;
@@ -285,22 +286,29 @@ button.day-cell:hover { z-index: 1; outline: 1px solid #aebcf3; background: #fbf
 .summer-period-preview label { display: flex; flex-direction: column; gap: 5px; font-size: 10px; font-weight: 600; }
 .summer-period-preview input { height: 36px; padding: 0 9px; border: 1px solid #dfe5ef; border-radius: 6px; background: #fff; color: #29364d; font-size: 12px; }
 .configuration-dialog { width: min(100%, 980px); }
-.department-dialog { width: min(100%, 1180px); }
+.department-dialog { width: min(100%, 1500px); }
 .configuration-section { margin: 0 0 12px; }
 .configuration-management { margin-top: 0; }
 .configuration-management .inline-form { grid-template-columns: minmax(100px, .8fr) minmax(115px, .9fr) minmax(125px, 1fr) auto; }
 .holiday-toggle { width: fit-content; margin: 10px 0 4px; }
 .holiday-type { display: flex; width: min(100%, 270px); flex-direction: column; gap: 5px; color: #59667d; font-size: 10px; font-weight: 600; }
 .holiday-type select { height: 38px; padding: 0 10px; border: 1px solid #dfe5ef; border-radius: 7px; background: #fff; color: #29364d; font-size: 12px; }
-.department-scroll { overflow-x: auto; margin-top: 13px; border: 1px solid var(--line); border-radius: 8px; }
-.department-table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 11px; }
-.department-table th, .department-table td { min-width: 62px; padding: 10px 8px; border-bottom: 1px solid var(--line); text-align: center; }
+.holiday-editor-notice { margin: 14px 0; padding: 12px; border: 1px solid #f1dfb8; border-radius: 8px; background: #fffaf0; color: #765d2b; font-size: 11px; }
+.holiday-editor-notice p { margin: 0 0 8px; }
+.holiday-editor-notice p:last-of-type { margin-bottom: 10px; }
+.department-scroll { max-height: 70vh; overflow: auto; margin-top: 13px; border: 1px solid var(--line); border-radius: 8px; }
+.department-table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; font-size: 10px; }
+.department-table th, .department-table td { min-width: 34px; padding: 6px 5px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: center; }
+.department-table th:nth-child(-n+7), .department-table td:nth-child(-n+7) { min-width: 76px; }
+.department-table tbody th:first-child { min-width: 150px; }
 .department-table thead th { background: #f7f8fc; color: #718098; font-size: 10px; text-transform: capitalize; }
-.department-table th:first-child { position: sticky; left: 0; min-width: 150px; background: #fff; text-align: left; }
-.department-table thead th:first-child { background: #f7f8fc; }
-.department-hours, .department-sample { display: inline-block; padding: 5px 7px; border-radius: 5px; white-space: nowrap; }
-.department-hours { background: #edf3ff; color: #4567bd; }
-.department-sample { background: #f3edfc; color: #7759a5; }
+.department-table thead tr:first-child th { position: sticky; top: 0; z-index: 2; }
+.department-table thead tr:nth-child(2) th { position: sticky; top: 29px; z-index: 2; background: #f7f8fc; }
+.department-table tbody th:first-child { position: sticky; left: 0; z-index: 1; background: #fff; text-align: left; }
+.employee-month-picker { display: flex; align-items: center; gap: 7px; color: #68758a; font-size: 10px; }
+.employee-month-picker select { height: 34px; padding: 0 8px; border: 1px solid #dfe5ef; border-radius: 6px; background: #fff; color: #29364d; font-size: 11px; }
+.employee-schedule-code { display: inline-block; min-width: 21px; margin: 1px; padding: 3px 4px; border-radius: 4px; font-size: 9px; font-weight: 700; }
+.edit-dialog [hidden] { display: none !important; }
 
 @media (min-width: 1550px) {
   .page-content { padding-top: 36px; }
