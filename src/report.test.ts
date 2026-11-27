@@ -20,4 +20,24 @@ describe("informe mensual", () => {
     expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;");
     expect(html).not.toContain("<img src=x");
   });
+
+  it("omite categorías sin horas y consolida actividades repetidas en el detalle", () => {
+    const data = createEmptySchedule(2026);
+    data.days["2026-06-01"] = {
+      activities: [
+        { id: "f1", code: "F", minutes: 60 },
+        { id: "f2", code: "F", minutes: 90 },
+      ],
+      coverages: [],
+    };
+
+    const html = buildMonthlyReportHtml(data, 2026, 5);
+
+    expect(html).toContain("F · Formación</th><td>2:30");
+    expect(html).not.toContain("CO · Curso online</th>");
+    expect(html).not.toContain("CR · Cobertura remunerada");
+    expect(html).not.toContain("CD consumido de la bolsa");
+    expect(html.match(/F 2:30/g)).toHaveLength(1);
+    expect(html).not.toContain("F 1:00");
+  });
 });

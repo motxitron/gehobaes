@@ -36,18 +36,34 @@ export function buildMonthlyReportHtml(
 ): string {
   const summary = getMonthSummary(data, year, month);
   const categoryRows = Object.entries(ACTIVITY_DEFINITIONS)
+    .filter(([code]) => summary.activityMinutes[code as keyof typeof ACTIVITY_DEFINITIONS] > 0)
     .map(([code, definition]) => {
       const minutes = summary.activityMinutes[code as keyof typeof ACTIVITY_DEFINITIONS];
       return `<tr><th>${code} · ${escapeHtml(definition.label)}</th><td>${formatMinutes(minutes)}</td></tr>`;
     })
     .join("");
+  const coverageRows = [
+    summary.paidCoverageMinutes > 0
+      ? `<tr><th>CR · Cobertura remunerada</th><td>${formatMinutes(summary.paidCoverageMinutes)}</td></tr>`
+      : "",
+    summary.bankEarnedMinutes > 0
+      ? `<tr><th>Cobertura extra añadida a la bolsa</th><td>${formatMinutes(summary.bankEarnedMinutes)}</td></tr>`
+      : "",
+    summary.bankSpentMinutes > 0
+      ? `<tr><th>CD consumido de la bolsa</th><td>${formatMinutes(summary.bankSpentMinutes)}</td></tr>`
+      : "",
+  ].join("");
   const details = summary.days
     .map((day) => {
-      const activities = day.activities
-        .map(
-          (activity) =>
-            `${activity.code} ${formatMinutes(activity.minutes)}`,
-        )
+      const activitiesByCode = new Map<string, number>();
+      for (const activity of day.activities) {
+        activitiesByCode.set(
+          activity.code,
+          (activitiesByCode.get(activity.code) ?? 0) + activity.minutes,
+        );
+      }
+      const activities = [...activitiesByCode]
+        .map(([code, minutes]) => `${code} ${formatMinutes(minutes)}`)
         .join(", ");
       const coverage = day.extraCoverages
         .map(
@@ -109,9 +125,7 @@ export function buildMonthlyReportHtml(
   <h2>Totales por actividad</h2>
   <table><tbody>
     ${categoryRows}
-    <tr><th>CR · Cobertura remunerada</th><td>${formatMinutes(summary.paidCoverageMinutes)}</td></tr>
-    <tr><th>Cobertura extra añadida a la bolsa</th><td>${formatMinutes(summary.bankEarnedMinutes)}</td></tr>
-    <tr><th>CD consumido de la bolsa</th><td>${formatMinutes(summary.bankSpentMinutes)}</td></tr>
+    ${coverageRows}
   </tbody></table>
 </section>
 <section class="panel">

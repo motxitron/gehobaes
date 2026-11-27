@@ -4,7 +4,7 @@ Piloto de una aplicación web para consultar y gestionar horarios de personal po
 
 ## Estado
 
-Piloto funcional para una cuenta ficticia (`user1`): configura jornada por año, registra actividades por horas y coberturas, administra festivos y excepciones, y abre un informe mensual. El botón **Today** vuelve al mes actual y enfoca el día de hoy. Los datos se guardan únicamente en el almacenamiento local del navegador.
+Piloto funcional para una cuenta ficticia (`user1`): configura jornada anual y cupo de vacaciones, registra actividades por horas y coberturas, administra e importa festivos y excepciones, y abre informes mensuales y una vista ficticia de departamento. El botón **Today** vuelve al mes actual y enfoca el día de hoy. Los datos se guardan únicamente en el almacenamiento local del navegador.
 
 > **No es un sistema de producción ni ofrece autenticación, permisos reales o sincronización entre dispositivos.** GitHub Pages publica archivos estáticos; no debe usarse como mecanismo de control de acceso ni almacenarse aquí información real del personal.
 
@@ -37,7 +37,8 @@ El workflow `.github/workflows/deploy-pages.yml` compila y publica `dist` en Git
 ## Datos y privacidad
 
 - El libro Excel de origen y cualquier fichero Excel quedan excluidos por `.gitignore`.
-- Los PDF fuente también quedan excluidos: se leen íntegramente en el navegador y no se suben ni conservan.
+- Los PDF, CSV y Excel fuente también quedan excluidos: se procesan íntegramente en el navegador y no se suben ni conservan.
+- La lectura local de libros `.xls` y `.xlsx` usa SheetJS Community Edition 0.20.3, distribuido bajo Apache-2.0 desde <https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz>.
 - La demostración contiene solo datos inventados; no copiar nombres, identificadores, turnos ni otros datos de empleados al repositorio.
 - El calendario de demostración se almacena en el navegador de quien lo usa. Borrar los datos del sitio elimina esos cambios.
 - Antes de manejar información real se requiere acordar identidad, backend, autorización en servidor, auditoría, retención y aprobación de seguridad y privacidad.
