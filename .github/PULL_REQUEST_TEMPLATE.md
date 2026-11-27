@@ -1,3 +1,5 @@
+<!-- Redacta el título, la descripción y los comentarios de este PR en castellano. -->
+
 ## Resumen
 
 <!-- Qué cambia este PR y por qué -->

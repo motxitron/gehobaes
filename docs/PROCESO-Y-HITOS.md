@@ -75,6 +75,14 @@ npm run preview
 
 No se deben subir cambios directamente a `main`. La plantilla del PR incluye una lista de comprobación para build, diseño adaptable, privacidad y documentación.
 
+## Idioma y reglas para asistentes
+
+- El idioma predeterminado del proyecto es el castellano: respuestas, formularios, títulos y descripciones de PR e incidencias, comentarios de revisión, commits, documentación e interfaz.
+- Solo se mantienen en otro idioma los identificadores y comandos que deban coincidir con herramientas, las marcas y las etiquetas de interfaz solicitadas explícitamente (por ejemplo, **Today**).
+- La fuente de instrucciones permanentes para Copilot es [`.github/copilot-instructions.md`](../.github/copilot-instructions.md). Actualízala mediante Pull Request cuando cambie el proceso o las convenciones.
+- Para comprobar qué instrucciones ha detectado Copilot CLI en este repositorio, ejecutar `copilot instruction list`.
+- Consultar también la plantilla [`.github/PULL_REQUEST_TEMPLATE.md`](../.github/PULL_REQUEST_TEMPLATE.md) antes de abrir un PR.
+
 ## Hitos
 
 ### H0 — Piloto de interfaz (completado)

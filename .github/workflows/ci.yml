@@ -1,4 +1,4 @@
-name: CI
+name: Integración continua
 
 on:
   pull_request:
@@ -10,16 +10,17 @@ permissions:
 
 jobs:
   build:
+    name: Comprobar compilación
     runs-on: ubuntu-latest
     steps:
-      - name: Check out source
+      - name: Descargar código
         uses: actions/checkout@v4
-      - name: Set up Node.js
+      - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-      - name: Install dependencies
+      - name: Instalar dependencias
         run: npm ci
-      - name: Build
+      - name: Compilar aplicación
         run: npm run build
