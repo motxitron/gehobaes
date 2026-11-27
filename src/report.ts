@@ -52,7 +52,7 @@ export function buildMonthlyReportHtml(
       const coverage = day.extraCoverages
         .map(
           (entry) =>
-            `${entry.paid ? "CR remunerada" : "Cobertura a CD"} ${formatMinutes(entry.minutes)}`,
+            `${entry.paid ? "CR remunerada" : "C · Cobertura a bolsa CD"} ${formatMinutes(entry.minutes)}`,
         )
         .join(", ");
       const note = data.holidays[day.date]

@@ -36,6 +36,8 @@ Cada actividad tiene un código, una descripción y un color identificable. En u
 | CD | Cobertura disfrutada |
 | CR | Cobertura remunerada |
 
+El código `C` se registra en el control de cobertura extra, no como una actividad que descuenta horas de la jornada. La cobertura no remunerada se acredita a la bolsa `CD`; si se marca como remunerada durante el verano, se contabiliza como `CR`.
+
 Para un día ordinario, la suma de las actividades que ocupan jornada no puede superar las horas previstas. El resto se calcula como **horas de trabajo sin categoría**:
 
 `trabajo = jornada prevista - suma de actividades del día`
@@ -103,6 +105,7 @@ El informe es un resumen horario; la aplicación no calcula importes de nómina.
 - Una actividad parcial deja el resto como trabajo sin categoría; la suma diaria no sobrepasa la jornada prevista.
 - `X` ocupa la jornada completa y es incompatible con otras actividades ese día.
 - La cobertura extra no remunerada aumenta la bolsa `CD`; `CD` la consume en otra fecha del mismo año y reduce las horas de trabajo de esa fecha.
+- El código `C` no descuenta de la jornada; añade las horas extra no remuneradas a la bolsa `CD`.
 - Una cobertura marcada `CR` solo se admite dentro del periodo de verano y aparece en el informe del mes de cobertura sin sumar a la bolsa `CD`.
 - El saldo `CD` nunca es negativo y caduca al finalizar el año.
 - Festivos manuales y los importados confirmados aplican jornada cero, salvo excepción explícita.

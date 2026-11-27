@@ -14,6 +14,8 @@ describe("informe mensual", () => {
     const html = buildMonthlyReportHtml(data, 2026, 5);
 
     expect(html).toContain("Cobertura extra añadida a la bolsa");
+    expect(html).toContain("C · Cobertura");
+    expect(html).toContain("C · Cobertura a bolsa CD 1:30");
     expect(html).toContain("1:30");
     expect(html).toContain("&lt;img src=x onerror=alert(1)&gt;");
     expect(html).not.toContain("<img src=x");
