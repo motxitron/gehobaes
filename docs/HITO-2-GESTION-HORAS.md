@@ -11,9 +11,9 @@ Cada perfil dispone de una configuración para cada año:
 - **V/Verano:** horas diarias de todos los viernes del año y de lunes a jueves dentro del periodo anual de verano. Si un viernes cae dentro del verano, se aplica una sola vez este valor.
 - **Periodo de verano:** fecha de inicio y de fin, definidas por empleado y año. Ambos extremos se consideran parte del periodo.
 
-Los valores se introducen con precisión de horas y minutos y se guardan como minutos enteros. Los sábados, domingos y festivos tienen jornada prevista de cero horas. Se pueden definir excepciones por fecha con las horas previstas para ese día.
+Los valores se introducen con precisión de horas y minutos y se guardan como minutos enteros. Los sábados, domingos y festivos tienen jornada prevista de cero horas. Se pueden definir excepciones para fines de semana y fechas no festivas. Un festivo prevalece sobre una excepción y no admite actividades ni coberturas.
 
-Los festivos son fechas no laborables del calendario individual, distintas de las vacaciones `X`. Se asocian al empleado y a una fecha, con código `DI`, `FL`, `FA` o `FN` y descripción. El cupo anual de vacaciones se define por empleado y año; no se pueden marcar más días `X` que los configurados. Una excepción permite configurar horas previstas si se trabaja ese día.
+Los festivos son fechas no laborables del calendario individual, distintas de las vacaciones `X`. Se asocian al empleado y a una fecha, con código `DI`, `FL`, `FA` o `FN` y descripción. Un festivo siempre tiene jornada cero, incluso si hay una excepción asociada; para trabajar ese día debe quitarse la marca de festivo. El cupo anual de vacaciones se define por empleado y año; no se pueden marcar más días `X` que los configurados.
 
 ## 2. Actividades y horas diarias
 
@@ -70,7 +70,7 @@ Con 7 horas previstas el viernes, registrar 3 horas extra de cobertura suma 10 h
 
 ## 4. Fines de semana y festivos
 
-Sábados, domingos y festivos empiezan con cero horas previstas. Si se trabaja en una fecha de este tipo, se define primero la excepción de horas previstas para esa fecha; luego se aplican las mismas reglas de actividades y cobertura. Una excepción no cambia el patrón semanal del empleado.
+Sábados, domingos y festivos empiezan con cero horas previstas. Para trabajar un fin de semana se define una excepción de jornada; los festivos no admiten esa excepción mientras conserven la marca festiva. Una excepción no cambia el patrón semanal del empleado.
 
 Los festivos se pueden añadir manualmente o importar desde CSV, Excel o PDF:
 
@@ -92,7 +92,7 @@ El botón de informe abre una ventana o pestaña separada para el empleado, año
 - Detalle diario con jornada prevista, actividades y minutos, trabajo restante, cobertura extra y movimiento de bolsa.
 - Omitir categorías sin horas y consolidar actividades del mismo código en totales y detalle.
 
-La vista anual de departamento presenta una fila por perfil y una columna por mes con desplazamiento horizontal. En este piloto solo `user1` representa datos del navegador; las demás filas son ejemplos anónimos ficticios.
+La vista general presenta todos los perfiles de demostración en una cuadrícula mensual con una columna por día y campos de nombre, código, jornada, dominio y rol. Solo `user1` representa datos guardados en el navegador; las otras filas son ficticias, ya que el piloto aún no mantiene un censo real.
 
 El informe es un resumen horario; la aplicación no calcula importes de nómina. Las horas `CR` se reportan en el mes de la cobertura.
 
@@ -114,9 +114,9 @@ El informe es un resumen horario; la aplicación no calcula importes de nómina.
 - El código `C` no descuenta de la jornada; añade las horas extra no remuneradas a la bolsa `CD`.
 - Una cobertura marcada `CR` solo se admite dentro del periodo de verano y aparece en el informe del mes de cobertura sin sumar a la bolsa `CD`.
 - El saldo `CD` nunca es negativo y caduca al finalizar el año.
-- Festivos manuales y los importados confirmados aplican jornada cero, salvo excepción explícita.
+- Festivos manuales e importados aplican jornada cero, aunque exista una excepción; no se admiten actividades ni coberturas mientras siga marcada la fecha.
 - Se admiten festivos DI/FL/FA/FN desde CSV con delimitador seleccionado y Excel `.xls`/`.xlsx`, procesados localmente y previsualizados antes de confirmarse.
 - Se puede editar y borrar cualquier actividad sin dejar cálculos o saldos incoherentes.
 - El informe mensual abre en otra ventana/pestaña y presenta totales por categoría y detalle diario.
 - El archivo PDF no sale del navegador ni se guarda; únicamente se conservan las fechas confirmadas.
-- Se pueden consolidar actividades iguales, marcar un festivo desde el editor y revisar la vista ficticia anual del departamento.
+- Se pueden consolidar actividades iguales, marcar un festivo desde el editor y revisar la cuadrícula global ficticia de empleados.
