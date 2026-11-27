@@ -1,6 +1,6 @@
 # Hito 2: gestión de jornada por horas
 
-**Estado:** especificación funcional definida; implementación pendiente.
+**Estado:** implementado en la aplicación piloto; sujeto a revisión mediante Pull Request.
 **Alcance:** perfiles del piloto `user1`, jornadas anuales, distribución horaria, festivos, coberturas, bolsa, vacaciones e informe mensual. La autenticación y los permisos reales quedan para H3.
 
 ## 1. Configuración de jornada por empleado y año

@@ -24,3 +24,5 @@ jobs:
         run: npm ci
       - name: Compilar aplicación
         run: npm run build
+      - name: Probar reglas horarias
+        run: npm test
