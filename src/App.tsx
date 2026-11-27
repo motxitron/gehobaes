@@ -82,6 +82,14 @@ function App() {
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<Activity | "">("");
   const [saveError, setSaveError] = useState(false);
+  const [focusDate, setFocusDate] = useState<string | null>(null);
+  const [focusRequest, setFocusRequest] = useState(0);
+  const today = new Date();
+  const todayDate = getDateKey(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  );
 
   useEffect(() => {
     try {
@@ -91,6 +99,10 @@ function App() {
       setSaveError(true);
     }
   }, [stored.schedule]);
+
+  useEffect(() => {
+    if (focusDate) document.getElementById(`day-${focusDate}`)?.focus();
+  }, [focusDate, focusRequest]);
 
   const yearOptions = useMemo(
     () => Array.from({ length: 16 }, (_, index) => 2020 + index),
@@ -278,11 +290,19 @@ function App() {
                   type="button"
                   className="today-button"
                   onClick={() => {
-                    setYear(2025);
-                    setMonth(0);
+                    const today = new Date();
+                    const date = getDateKey(
+                      today.getFullYear(),
+                      today.getMonth(),
+                      today.getDate(),
+                    );
+                    setYear(today.getFullYear());
+                    setMonth(today.getMonth());
+                    setFocusDate(date);
+                    setFocusRequest((request) => request + 1);
                   }}
                 >
-                  Inicio
+                  Today
                 </button>
               </div>
             </div>
@@ -296,8 +316,10 @@ function App() {
               {days.map((item, index) =>
                 item ? (
                   <button
-                    className={`day-cell${item.activity ? " has-activity" : ""}${index % 7 > 4 ? " weekend" : ""}`}
+                    className={`day-cell${item.activity ? " has-activity" : ""}${index % 7 > 4 ? " weekend" : ""}${item.date === todayDate ? " today" : ""}`}
                     type="button"
+                    id={`day-${item.date}`}
+                    aria-current={item.date === todayDate ? "date" : undefined}
                     key={item.date}
                     onClick={() => openEditor(item.date, item.activity)}
                     aria-label={`${item.day} de ${MONTHS[month]}${item.activity ? `, ${ACTIVITIES[item.activity].label}` : ""}. Editar`}

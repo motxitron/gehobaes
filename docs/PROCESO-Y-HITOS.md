@@ -1,25 +1,90 @@
 # Proceso de desarrollo e hitos
 
-## Flujo de trabajo
+## Repositorio y publicación actuales
+
+- Repositorio público: <https://github.com/motxitron/gehobaes>
+- Rama estable: `main`.
+- Sitio: <https://motxitron.github.io/gehobaes/>.
+- GitHub Pages se configura con `build_type: workflow`. El workflow `.github/workflows/deploy-pages.yml` construye `dist` y lo publica al recibir cambios en `main`.
+- `.github/workflows/ci.yml` instala dependencias con `npm ci` y ejecuta `npm run build` en cada Pull Request y actualización de `main`.
+- La ruta base de Vite es `/gehobaes/`; si cambia el nombre del repositorio, hay que actualizar `vite.config.ts` y este documento.
+
+La creación inicial se hizo con una sesión autenticada de GitHub CLI. Para repetir la configuración en otra máquina Windows:
+
+```powershell
+winget install --id GitHub.cli --exact
+gh auth login --hostname github.com --web --git-protocol https --scopes workflow
+gh auth status
+gh api user --jq .login
+```
+
+Inicia sesión con la cuenta propietaria del repositorio en el navegador. No pegues tokens ni códigos de dispositivo en issues, Pull Requests o archivos del proyecto. Si una terminal abierta no reconoce `gh`, vuelve a abrirla; la ubicación de instalación habitual es `C:\Program Files\GitHub CLI`.
+
+Para crear un repositorio remoto desde una carpeta local ya inicializada y con un commit:
+
+```powershell
+gh repo create motxitron/gehobaes --public --source . --remote origin --push
+gh api --method POST repos/motxitron/gehobaes/pages -f build_type=workflow
+```
+
+El segundo comando activa Pages para despliegues con GitHub Actions. Esta configuración ya está hecha para el repositorio del piloto.
+
+## Preparar el entorno local
+
+Requisitos: Git y Node.js 20 o posterior. Clona el repositorio e instala dependencias:
+
+```powershell
+git clone https://github.com/motxitron/gehobaes.git
+Set-Location gehobaes
+npm ci
+npm run dev
+```
+
+Para verificar la compilación local antes de un PR:
+
+```powershell
+npm run build
+npm run preview
+```
+
+## Flujo de Pull Request
 
 1. Abrir una issue pequeña con objetivo, alcance y criterios de aceptación.
-2. Crear una rama desde `main` (`feat/`, `fix/` o `docs/`) y trabajar en esa rama.
-3. Abrir un Pull Request hacia `main`; no subir cambios directamente a `main`.
-4. Esperar a que CI ejecute `npm ci` y `npm run build`. Revisar la interfaz y el diff; retirar cualquier dato personal antes de solicitar revisión.
-5. Actualizar README o este documento cuando cambien instalación, comportamiento, arquitectura o controles de privacidad.
-6. Aprobar y fusionar el PR. La publicación en Pages se ejecuta desde `main`.
+2. Actualizar `main` y crear una rama específica:
 
-Usar la plantilla de PR. Un hito solo se considera terminado cuando sus criterios se cumplen y el cambio está integrado mediante PR.
+   ```powershell
+   git switch main
+   git pull --ff-only
+   git switch -c feat/descripcion-breve
+   ```
+
+3. Implementar el cambio, probar `npm run build` y actualizar README, manual o hitos que hayan quedado desfasados.
+4. Revisar los archivos que se van a subir. No añadir el Excel, exportaciones, capturas ni datos identificables.
+5. Confirmar cambios y publicar la rama:
+
+   ```powershell
+   git add <archivos-del-cambio>
+   git diff --cached --check
+   git commit -m "Describe el cambio"
+   git push -u origin feat/descripcion-breve
+   ```
+
+6. Abrir un Pull Request hacia `main` (desde la interfaz de GitHub o con `gh pr create`). Usar `.github/PULL_REQUEST_TEMPLATE.md`.
+7. Esperar CI, revisar el diff, los criterios de aceptación y la interfaz. Fusionar el PR después de la revisión.
+8. Tras la fusión, comprobar el workflow **Deploy to GitHub Pages** y visitar el sitio publicado.
+
+No se deben subir cambios directamente a `main`. La plantilla del PR incluye una lista de comprobación para build, diseño adaptable, privacidad y documentación.
 
 ## Hitos
 
-### H0 — Piloto de interfaz (en curso)
+### H0 — Piloto de interfaz (completado)
 
 - [x] Aplicación React/TypeScript adaptable con selección de año y cuadrícula mensual.
 - [x] Cuenta y perfil ficticios para el piloto `user1`.
 - [x] Edición de marcas de horario y persistencia local en el navegador.
-- [x] CI y despliegue automatizado a Pages preparados.
-- [ ] Crear el repositorio remoto, activar Pages y verificar el primer despliegue.
+- [x] Botón Today que navega al mes actual, resalta la fecha y enfoca su celda.
+- [x] Repositorio público, CI y despliegue automatizado en Pages verificados.
+- [x] Manual de uso y proceso de contribución documentados.
 
 ### H1 — Perfiles y catálogos
 

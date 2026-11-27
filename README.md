@@ -4,7 +4,7 @@ Piloto de una aplicación web para consultar y gestionar horarios de personal po
 
 ## Estado
 
-Primera versión de demostración: una cuenta de muestra (`user1`), un perfil ficticio y una cuadrícula mensual editable. Los cambios se guardan únicamente en el almacenamiento local del navegador.
+Primera versión de demostración: una cuenta de muestra (`user1`), un perfil ficticio y una cuadrícula mensual editable. El botón **Today** navega al mes actual y enfoca el día de hoy. Los cambios se guardan únicamente en el almacenamiento local del navegador.
 
 > **No es un sistema de producción ni ofrece autenticación, permisos reales o sincronización entre dispositivos.** GitHub Pages publica archivos estáticos; no debe usarse como mecanismo de control de acceso ni almacenarse aquí información real del personal.
 
@@ -24,9 +24,13 @@ npm run build
 npm run preview
 ```
 
+## Manual de uso
+
+Consulta el [Manual de uso](docs/MANUAL-USO.md) para navegar por el calendario, editar actividades y entender dónde se guardan los cambios.
+
 ## Publicación
 
-El workflow `.github/workflows/deploy-pages.yml` compila y publica `dist` en GitHub Pages al actualizar `main`. En el repositorio, activar **Settings → Pages → Build and deployment → GitHub Actions**. La aplicación está publicada en `https://motxitron.github.io/gehobaes/`.
+El workflow `.github/workflows/deploy-pages.yml` compila y publica `dist` en GitHub Pages al actualizar `main`. Pages está configurado para desplegar mediante GitHub Actions. La aplicación está publicada en `https://motxitron.github.io/gehobaes/`.
 
 ## Datos y privacidad
 
