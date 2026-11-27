@@ -42,3 +42,7 @@ El workflow `.github/workflows/deploy-pages.yml` compila y publica `dist` en Git
 ## Proceso e hitos
 
 Consultar [Proceso de desarrollo e hitos](docs/PROCESO-Y-HITOS.md) para el flujo de Pull Requests, criterios de revisión y evolución propuesta.
+
+## Instrucciones para Copilot
+
+Las reglas permanentes de idioma, Pull Requests, privacidad y validación están en [`.github/copilot-instructions.md`](.github/copilot-instructions.md). Copilot CLI puede mostrar las instrucciones detectadas para este repositorio con `copilot instruction list`.
