@@ -13,7 +13,7 @@ Cada perfil dispone de una configuración para cada año:
 
 Los valores se introducen con precisión de horas y minutos y se guardan como minutos enteros. Los sábados, domingos y festivos tienen jornada prevista de cero horas. Se pueden definir excepciones por fecha con las horas previstas para ese día.
 
-Los festivos son fechas no laborables del calendario individual, distintas de las vacaciones `X`. Se asocian al empleado y a una fecha, con una descripción. Una excepción permite configurar horas previstas si se trabaja ese día.
+Los festivos son fechas no laborables del calendario individual, distintas de las vacaciones `X`. Se asocian al empleado y a una fecha, con código `DI`, `FL`, `FA` o `FN` y descripción. El cupo anual de vacaciones se define por empleado y año; no se pueden marcar más días `X` que los configurados. Una excepción permite configurar horas previstas si se trabaja ese día.
 
 ## 2. Actividades y horas diarias
 
@@ -72,10 +72,12 @@ Con 7 horas previstas el viernes, registrar 3 horas extra de cobertura suma 10 h
 
 Sábados, domingos y festivos empiezan con cero horas previstas. Si se trabaja en una fecha de este tipo, se define primero la excepción de horas previstas para esa fecha; luego se aplican las mismas reglas de actividades y cobertura. Una excepción no cambia el patrón semanal del empleado.
 
-Los festivos se pueden añadir manualmente o importar desde un PDF:
+Los festivos se pueden añadir manualmente o importar desde CSV, Excel o PDF:
 
-- En la entrada manual se indica la fecha y la descripción; el empleado queda determinado por el perfil activo.
+- En la entrada manual se indica fecha, código (DI/FL/FA/FN) y descripción; el empleado queda determinado por el perfil activo.
+- CSV y Excel `.xls`/`.xlsx` usan columnas fecha, código y descripción opcional. El CSV permite seleccionar coma o punto y coma. La importación se previsualiza antes de guardarse.
 - El PDF se selecciona desde el dispositivo y se procesa íntegramente en el navegador. Se muestra una vista previa de las fechas detectadas para que la persona las revise y confirme.
+- El texto del PDF puede sugerir un periodo intensivo si se detecta el término y un par de fechas; la persona debe confirmar el periodo. La lectura por colores y el OCR no forman parte del alcance.
 - El PDF original nunca se sube a GitHub, a un servidor ni al almacenamiento del navegador. Se descarta al terminar la lectura.
 - Solo las fechas confirmadas se guardan con los datos del perfil en el almacenamiento local. Si el PDF no se puede interpretar, se usa la entrada manual.
 
@@ -88,6 +90,9 @@ El botón de informe abre una ventana o pestaña separada para el empleado, año
 - Horas extra de cobertura, separando las destinadas a `CD` de las remuneradas como `CR`.
 - Saldo de cobertura al inicio y al final del mes, horas añadidas y horas consumidas.
 - Detalle diario con jornada prevista, actividades y minutos, trabajo restante, cobertura extra y movimiento de bolsa.
+- Omitir categorías sin horas y consolidar actividades del mismo código en totales y detalle.
+
+La vista anual de departamento presenta una fila por perfil y una columna por mes con desplazamiento horizontal. En este piloto solo `user1` representa datos del navegador; las demás filas son ejemplos anónimos ficticios.
 
 El informe es un resumen horario; la aplicación no calcula importes de nómina. Las horas `CR` se reportan en el mes de la cobertura.
 
@@ -104,11 +109,14 @@ El informe es un resumen horario; la aplicación no calcula importes de nómina.
 - El cálculo selecciona correctamente L-J o V/Verano según empleado, año, viernes y periodo de verano.
 - Una actividad parcial deja el resto como trabajo sin categoría; la suma diaria no sobrepasa la jornada prevista.
 - `X` ocupa la jornada completa y es incompatible con otras actividades ese día.
+- El cupo anual de vacaciones limita los días `X`; la configuración no puede reducirse por debajo del uso actual.
 - La cobertura extra no remunerada aumenta la bolsa `CD`; `CD` la consume en otra fecha del mismo año y reduce las horas de trabajo de esa fecha.
 - El código `C` no descuenta de la jornada; añade las horas extra no remuneradas a la bolsa `CD`.
 - Una cobertura marcada `CR` solo se admite dentro del periodo de verano y aparece en el informe del mes de cobertura sin sumar a la bolsa `CD`.
 - El saldo `CD` nunca es negativo y caduca al finalizar el año.
 - Festivos manuales y los importados confirmados aplican jornada cero, salvo excepción explícita.
+- Se admiten festivos DI/FL/FA/FN desde CSV con delimitador seleccionado y Excel `.xls`/`.xlsx`, procesados localmente y previsualizados antes de confirmarse.
 - Se puede editar y borrar cualquier actividad sin dejar cálculos o saldos incoherentes.
 - El informe mensual abre en otra ventana/pestaña y presenta totales por categoría y detalle diario.
 - El archivo PDF no sale del navegador ni se guarda; únicamente se conservan las fechas confirmadas.
+- Se pueden consolidar actividades iguales, marcar un festivo desde el editor y revisar la vista ficticia anual del departamento.

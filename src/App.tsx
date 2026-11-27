@@ -1,30 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ACTIVITY_DEFINITIONS,
+  HOLIDAY_DEFINITIONS,
   createEmptySchedule,
   formatMinutes,
   getBankBalance,
   getDateKey,
   getMonthSummary,
   getScheduledMinutes,
+  getVacationDaysUsed,
   getYearSettings,
   isDateKey,
   isSummerDate,
+  mergeActivitiesByCode,
   minutesToTimeInput,
-  normalizeCoverageActivities,
+  normalizeScheduleData,
   parseTimeInput,
   validateAllDays,
-  validateBankBalance,
-  validateDayRecord,
   validateYearSettings,
   type ActivityCode,
   type DayActivity,
   type DayRecord,
   type ExtraCoverage,
+  type HolidayCode,
   type ScheduleData,
   type YearSettings,
 } from "./schedule";
-import { extractHolidayDates } from "./pdf-holidays";
+import { extractHolidayDocument } from "./pdf-holidays";
+import type { HolidayImportEntry } from "./holiday-import";
 import { buildMonthlyReportHtml } from "./report";
 
 const MONTHS = [
@@ -42,6 +45,15 @@ const MONTHS = [
   "Diciembre",
 ];
 const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+const DEPARTMENT_USERS = [
+  "user1",
+  "Usuario anónimo 02",
+  "Usuario anónimo 03",
+  "Usuario anónimo 04",
+  "Usuario anónimo 05",
+  "Usuario anónimo 06",
+  "Usuario anónimo 07",
+];
 const STORAGE_KEY = "motxitron-schedule-v2";
 
 interface StoredSchedule {
@@ -51,6 +63,7 @@ interface StoredSchedule {
 
 interface HolidayPreview {
   date: string;
+  code: HolidayCode;
   description: string;
   selected: boolean;
 }
@@ -66,10 +79,23 @@ function isActivityCode(value: unknown): value is ActivityCode {
   );
 }
 
+function isHolidayCode(value: unknown): value is HolidayCode {
+  return (
+    typeof value === "string" &&
+    Object.prototype.hasOwnProperty.call(HOLIDAY_DEFINITIONS, value)
+  );
+}
+
 function isScheduleData(value: unknown): value is ScheduleData {
   if (!isRecord(value)) return false;
-  const { yearly, holidays, exceptions, days } = value;
-  if (!isRecord(yearly) || !isRecord(holidays) || !isRecord(exceptions) || !isRecord(days)) {
+  const { yearly, holidays, holidayCodes, exceptions, days } = value;
+  if (
+    !isRecord(yearly) ||
+    !isRecord(holidays) ||
+    (holidayCodes !== undefined && !isRecord(holidayCodes)) ||
+    !isRecord(exceptions) ||
+    !isRecord(days)
+  ) {
     return false;
   }
   if (
@@ -79,6 +105,8 @@ function isScheduleData(value: unknown): value is ScheduleData {
         isRecord(settings) &&
         Number.isInteger(settings.mondayToThursdayMinutes) &&
         Number.isInteger(settings.fridaySummerMinutes) &&
+        (settings.vacationQuotaDays === undefined ||
+          Number.isInteger(settings.vacationQuotaDays)) &&
         typeof settings.summerStart === "string" &&
         typeof settings.summerEnd === "string",
     )
@@ -86,6 +114,10 @@ function isScheduleData(value: unknown): value is ScheduleData {
     return false;
   }
   if (
+    (holidayCodes !== undefined &&
+      !Object.entries(holidayCodes).every(
+        ([date, code]) => isDateKey(date) && isHolidayCode(code),
+      )) ||
     !Object.entries(holidays).every(
       ([date, description]) => isDateKey(date) && typeof description === "string",
     ) ||
@@ -125,7 +157,7 @@ function loadSchedule(year: number): StoredSchedule {
     if (!saved) return { data: fallback, error: false };
     const parsed: unknown = JSON.parse(saved);
     if (!isScheduleData(parsed)) return { data: fallback, error: true };
-    const normalized = normalizeCoverageActivities(parsed);
+    const normalized = normalizeScheduleData(parsed);
     if (!normalized.yearly[String(year)]) {
       return {
         data: {
@@ -166,6 +198,8 @@ function App() {
   const [editingDate, setEditingDate] = useState<string | null>(null);
   const [draftActivities, setDraftActivities] = useState<DayActivity[]>([]);
   const [draftCoverages, setDraftCoverages] = useState<ExtraCoverage[]>([]);
+  const [draftHoliday, setDraftHoliday] = useState(false);
+  const [draftHolidayCode, setDraftHolidayCode] = useState<HolidayCode>("DI");
   const [newActivityCode, setNewActivityCode] =
     useState<Exclude<ActivityCode, "C">>("F");
   const [newActivityTime, setNewActivityTime] = useState("01:00");
@@ -177,6 +211,8 @@ function App() {
   );
   const [holidayDate, setHolidayDate] = useState("");
   const [holidayDescription, setHolidayDescription] = useState("");
+  const [holidayCode, setHolidayCode] = useState<HolidayCode>("DI");
+  const [csvDelimiter, setCsvDelimiter] = useState<"," | ";">(",");
   const [exceptionDate, setExceptionDate] = useState("");
   const [exceptionTime, setExceptionTime] = useState("00:00");
   const [pdfImporting, setPdfImporting] = useState(false);
@@ -185,6 +221,12 @@ function App() {
     error: boolean;
   } | null>(null);
   const [holidayPreview, setHolidayPreview] = useState<HolidayPreview[]>([]);
+  const [pdfSummerPeriod, setPdfSummerPeriod] = useState<{
+    start: string;
+    end: string;
+  } | null>(null);
+  const [configurationOpen, setConfigurationOpen] = useState(false);
+  const [departmentOpen, setDepartmentOpen] = useState(false);
   const [focusDate, setFocusDate] = useState<string | null>(null);
   const [focusRequest, setFocusRequest] = useState(0);
   const todayDate = getDateKey(today.getFullYear(), today.getMonth(), today.getDate());
@@ -208,16 +250,31 @@ function App() {
   }, [focusDate, focusRequest]);
 
   useEffect(() => {
-    if (!editingDate && !holidayPreview.length) return;
+    if (
+      !editingDate &&
+      !holidayPreview.length &&
+      !pdfSummerPeriod &&
+      !configurationOpen &&
+      !departmentOpen
+    ) return;
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setEditingDate(null);
         setHolidayPreview([]);
+        setPdfSummerPeriod(null);
+        setConfigurationOpen(false);
+        setDepartmentOpen(false);
       }
     }
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [editingDate, holidayPreview.length]);
+  }, [
+    configurationOpen,
+    departmentOpen,
+    editingDate,
+    holidayPreview.length,
+    pdfSummerPeriod,
+  ]);
 
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -278,6 +335,8 @@ function App() {
   function openEditor(date: string) {
     const record = data.days[date] ?? { activities: [], coverages: [] };
     setEditingDate(date);
+    setDraftHoliday(Boolean(data.holidays[date]));
+    setDraftHolidayCode(data.holidayCodes[date] ?? "DI");
     setDraftActivities(record.activities.map((activity) => ({ ...activity })));
     setDraftCoverages(record.coverages.map((coverage) => ({ ...coverage })));
     setNewActivityCode("F");
@@ -300,33 +359,55 @@ function App() {
       );
       return;
     }
-    setDraftActivities((current) => [
-      ...current,
-      { id: newId(), code: newActivityCode, minutes },
-    ]);
+    setDraftActivities((current) => {
+      const existing = current.find((activity) => activity.code === newActivityCode);
+      if (existing) {
+        return current.map((activity) =>
+          activity.id === existing.id
+            ? {
+                ...activity,
+                minutes:
+                  newActivityCode === "X"
+                    ? minutes
+                    : activity.minutes + minutes,
+              }
+            : activity,
+        );
+      }
+      return [...current, { id: newId(), code: newActivityCode, minutes }];
+    });
     setFormError("");
   }
 
   function saveDay() {
     if (!editingDate) return;
     const record: DayRecord = {
-      activities: draftActivities,
+      activities: mergeActivitiesByCode(draftActivities),
       coverages: draftCoverages,
     };
     const next: ScheduleData = {
       ...data,
       days: { ...data.days },
+      holidays: { ...data.holidays },
+      holidayCodes: { ...data.holidayCodes },
     };
+    if (draftHoliday) {
+      next.holidays[editingDate] =
+        data.holidays[editingDate] ?? HOLIDAY_DEFINITIONS[draftHolidayCode];
+      next.holidayCodes[editingDate] = draftHolidayCode;
+    } else {
+      delete next.holidays[editingDate];
+      delete next.holidayCodes[editingDate];
+    }
     if (record.activities.length || record.coverages.length) {
       next.days[editingDate] = record;
     } else {
       delete next.days[editingDate];
     }
 
-    const dayError = validateDayRecord(editingDate, record, next);
-    const bankError = validateBankBalance(next, year);
-    if (dayError || bankError) {
-      setFormError(dayError ?? bankError ?? "No se pudo validar el día.");
+    const validationError = validateAllDays(next, Number(editingDate.slice(0, 4)));
+    if (validationError) {
+      setFormError(validationError);
       return;
     }
     setStored({ data: next, error: false });
@@ -364,6 +445,7 @@ function App() {
     const next: ScheduleData = {
       ...data,
       holidays: { ...data.holidays, [holidayDate]: holidayDescription.trim() },
+      holidayCodes: { ...data.holidayCodes, [holidayDate]: holidayCode },
     };
     const validationError = validateAllDays(next, year);
     if (validationError) {
@@ -373,13 +455,16 @@ function App() {
     setStored({ data: next, error: false });
     setHolidayDate("");
     setHolidayDescription("");
+    setHolidayCode("DI");
     setFormError("");
   }
 
   function removeHoliday(date: string) {
     const holidays = { ...data.holidays };
+    const holidayCodes = { ...data.holidayCodes };
     delete holidays[date];
-    setStored({ data: { ...data, holidays }, error: false });
+    delete holidayCodes[date];
+    setStored({ data: { ...data, holidays, holidayCodes }, error: false });
     setFormError("");
   }
 
@@ -425,8 +510,8 @@ function App() {
     setPdfStatus({ message: "Leyendo el PDF localmente…", error: false });
     setPdfImporting(true);
     try {
-      const dates = await extractHolidayDates(file, year);
-      if (!dates.length) {
+      const extracted = await extractHolidayDocument(file, year);
+      if (!extracted.dates.length && !extracted.summerPeriod) {
         setPdfStatus({
           message: `No se detectaron fechas de ${year}. Si el PDF es una imagen escaneada, añade los festivos manualmente.`,
           error: true,
@@ -434,14 +519,24 @@ function App() {
         return;
       }
       setHolidayPreview(
-        dates.map((date) => ({
+        extracted.dates.map((date) => ({
           date,
+          code: data.holidayCodes[date] ?? "DI",
           description: data.holidays[date] ?? "Festivo",
           selected: !data.holidays[date],
         })),
       );
+      setPdfSummerPeriod(extracted.summerPeriod);
       setPdfStatus({
-        message: `Se detectaron ${dates.length} fechas. Revísalas y confirma la importación.`,
+        message: [
+          `${extracted.dates.length} festivos detectados.`,
+          extracted.summerPeriod
+            ? `Periodo intensivo detectado: ${formatLongDate(extracted.summerPeriod.start)} a ${formatLongDate(extracted.summerPeriod.end)}.`
+            : "",
+          "Revísalos y confirma la importación.",
+        ]
+          .filter(Boolean)
+          .join(" "),
         error: false,
       });
     } catch (error) {
@@ -457,17 +552,84 @@ function App() {
     }
   }
 
+  async function importHolidayFile(
+    file: File | undefined,
+    delimiter: "," | ";",
+  ) {
+    if (!file) return;
+    if (file.size > 20 * 1024 * 1024) {
+      setPdfStatus({
+        message: "El fichero supera el límite local de 20 MB.",
+        error: true,
+      });
+      return;
+    }
+    setFormError("");
+    setPdfStatus({ message: "Leyendo el fichero localmente…", error: false });
+    try {
+      const { parseHolidayCsv, parseHolidaySpreadsheet } = await import(
+        "./holiday-import"
+      );
+      const entries = file.name.toLocaleLowerCase("es-ES").endsWith(".csv")
+        ? parseHolidayCsv(await file.text(), year, delimiter)
+        : await parseHolidaySpreadsheet(file, year);
+      if (!entries.length) {
+        setPdfStatus({
+          message: "El fichero no contiene filas de festivos.",
+          error: true,
+        });
+        return;
+      }
+      setHolidayPreview(toHolidayPreview(entries));
+      setPdfSummerPeriod(null);
+      setPdfStatus({
+        message: `Se han leído ${entries.length} filas. Revísalas y confirma la importación.`,
+        error: false,
+      });
+    } catch (error) {
+      setPdfStatus({
+        message:
+          error instanceof Error
+            ? `No se pudo leer el fichero: ${error.message}`
+            : "No se pudo leer el fichero.",
+        error: true,
+      });
+    }
+  }
+
+  function toHolidayPreview(entries: HolidayImportEntry[]): HolidayPreview[] {
+    return entries.map((entry) => ({
+      ...entry,
+      selected: !data.holidays[entry.date],
+    }));
+  }
+
   function confirmHolidayImport() {
     const selected = holidayPreview.filter((entry) => entry.selected);
-    if (!selected.length) {
+    if (!selected.length && !pdfSummerPeriod) {
       setFormError("Selecciona al menos una fecha para importar.");
       return;
     }
     const holidays = { ...data.holidays };
+    const holidayCodes = { ...data.holidayCodes };
     for (const entry of selected) {
       holidays[entry.date] = entry.description.trim() || "Festivo";
+      holidayCodes[entry.date] = entry.code;
     }
-    const next: ScheduleData = { ...data, holidays };
+    const yearly = { ...data.yearly };
+    if (pdfSummerPeriod) {
+      yearly[String(year)] = {
+        ...getYearSettings(data, year),
+        summerStart: pdfSummerPeriod.start,
+        summerEnd: pdfSummerPeriod.end,
+      };
+      const settingsError = validateYearSettings(year, yearly[String(year)]);
+      if (settingsError) {
+        setFormError(settingsError);
+        return;
+      }
+    }
+    const next: ScheduleData = { ...data, holidays, holidayCodes, yearly };
     const validationError = validateAllDays(next, year);
     if (validationError) {
       setFormError(validationError);
@@ -475,8 +637,9 @@ function App() {
     }
     setStored({ data: next, error: false });
     setHolidayPreview([]);
+    setPdfSummerPeriod(null);
     setPdfStatus({
-      message: `Se guardaron ${selected.length} festivos confirmados.`,
+      message: `Se guardaron ${selected.length} festivos confirmados${pdfSummerPeriod ? " y el periodo intensivo" : ""}.`,
       error: false,
     });
     setFormError("");
@@ -546,6 +709,22 @@ function App() {
               ))}
             </select>
           </label>
+          <div className="page-heading-actions">
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setConfigurationOpen(true)}
+            >
+              Configuración de horario
+            </button>
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setDepartmentOpen(true)}
+            >
+              Vista del departamento
+            </button>
+          </div>
         </section>
 
         <section className="notice" role="status">
@@ -564,7 +743,7 @@ function App() {
         )}
         {formError && <p className="form-feedback" role="alert">{formError}</p>}
 
-        <section className="annual-settings" aria-labelledby="annual-title">
+        <section className="annual-settings" aria-labelledby="annual-title" hidden>
           <div className="section-title-row">
             <div>
               <p className="eyebrow">CONFIGURACIÓN ANUAL</p>
@@ -635,11 +814,28 @@ function App() {
                 }
               />
             </label>
+            <label>
+              Cupo anual de vacaciones (días)
+              <input
+                type="number"
+                min="0"
+                max="366"
+                step="1"
+                value={settingsDraft.vacationQuotaDays}
+                onChange={(event) =>
+                  setSettingsDraft((current) => ({
+                    ...current,
+                    vacationQuotaDays: Number(event.target.value),
+                  }))
+                }
+              />
+            </label>
           </div>
           <p className="settings-note">
             {summerConfigured
               ? `Verano del ${formatLongDate(yearSettings.summerStart)} al ${formatLongDate(yearSettings.summerEnd)}, ambos incluidos.`
               : "Configura las fechas de verano. Los viernes usan la jornada indicada en todo el año."}
+            {" "}Vacaciones usadas: {getVacationDaysUsed(data, year)} de {yearSettings.vacationQuotaDays} días.
           </p>
         </section>
 
@@ -711,14 +907,14 @@ function App() {
                     aria-current={item.date === todayDate ? "date" : undefined}
                     key={item.date}
                     onClick={() => openEditor(item.date)}
-                    aria-label={`${formatLongDate(item.date)}, jornada prevista ${formatMinutes(item.scheduledMinutes)}${data.holidays[item.date] ? `, festivo ${data.holidays[item.date]}` : ""}. Editar día`}
+                    aria-label={`${formatLongDate(item.date)}, jornada prevista ${formatMinutes(item.scheduledMinutes)}${data.holidays[item.date] ? `, festivo ${data.holidayCodes[item.date] ?? "DI"} ${data.holidays[item.date]}` : ""}. Editar día`}
                   >
                     <span className="day-cell-heading">
                       <span className="day-number">{item.day}</span>
                       <span className="planned-hours">{formatMinutes(item.scheduledMinutes)}</span>
                     </span>
                     {data.holidays[item.date] && (
-                      <span className="holiday-label">{data.holidays[item.date]}</span>
+                      <span className="holiday-label">{data.holidayCodes[item.date] ?? "DI"} · {data.holidays[item.date]}</span>
                     )}
                     {item.record.activities.length > 0 && (
                       <span className="activity-list">
@@ -786,7 +982,7 @@ function App() {
           </section>
         </div>
 
-        <section className="management-grid" aria-label="Gestión de festivos y excepciones">
+        <section className="management-grid" aria-label="Gestión de festivos y excepciones" hidden>
           <div className="management-card">
             <h2>Festivos de {year}</h2>
             <form
@@ -797,9 +993,42 @@ function App() {
               }}
             >
               <label>Fecha<input type="date" value={holidayDate} onChange={(event) => setHolidayDate(event.target.value)} /></label>
+              <label>Tipo
+                <select
+                  value={holidayCode}
+                  onChange={(event) => setHolidayCode(event.target.value as HolidayCode)}
+                >
+                  {Object.entries(HOLIDAY_DEFINITIONS).map(([code, label]) => (
+                    <option key={code} value={code}>{code} · {label}</option>
+                  ))}
+                </select>
+              </label>
               <label>Descripción<input type="text" maxLength={80} value={holidayDescription} onChange={(event) => setHolidayDescription(event.target.value)} placeholder="Festivo local" /></label>
               <button type="submit" className="secondary-button">Añadir</button>
             </form>
+            <div className="import-controls">
+              <label>
+                Separador CSV
+                <select
+                  value={csvDelimiter}
+                  onChange={(event) => setCsvDelimiter(event.target.value as "," | ";")}
+                >
+                  <option value=",">Coma (,)</option>
+                  <option value=";">Punto y coma (;)</option>
+                </select>
+              </label>
+              <label className="file-picker">
+                <span>Importar CSV, XLS o XLSX</span>
+                <input
+                  type="file"
+                  accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                  onChange={(event) => {
+                    void importHolidayFile(event.currentTarget.files?.[0], csvDelimiter);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+            </div>
             <label className="file-picker">
               <span>{pdfImporting ? "Leyendo PDF localmente…" : "Importar desde PDF"}</span>
               <input
@@ -812,7 +1041,7 @@ function App() {
                 }}
               />
             </label>
-            <p className="privacy-note">El PDF se procesa en este navegador y se descarta; solo se guardan las fechas que confirmes.</p>
+            <p className="privacy-note">Los ficheros CSV, Excel y PDF se procesan en este navegador y se descartan; solo se guardan los festivos que confirmes.</p>
             {pdfStatus && (
               <p
                 className={`pdf-status${pdfStatus.error ? " error" : ""}`}
@@ -827,7 +1056,7 @@ function App() {
                 .sort(([a], [b]) => a.localeCompare(b))
                 .map(([date, description]) => (
                   <li key={date}>
-                    <span><strong>{formatLongDate(date)}</strong> · {description}</span>
+                    <span><strong>{formatLongDate(date)}</strong> · {data.holidayCodes[date] ?? "DI"} · {description}</span>
                     <button type="button" className="text-button" onClick={() => removeHoliday(date)}>Eliminar</button>
                   </li>
                 ))}
@@ -895,6 +1124,27 @@ function App() {
               {data.holidays[editingDate] && <span>Festivo: {data.holidays[editingDate]}</span>}
               {Object.prototype.hasOwnProperty.call(data.exceptions, editingDate) && <span>Excepción de jornada</span>}
             </div>
+            <label className="checkbox-label holiday-toggle">
+              <input
+                type="checkbox"
+                checked={draftHoliday}
+                onChange={(event) => setDraftHoliday(event.target.checked)}
+              />
+              Marcar el día como festivo
+            </label>
+            {draftHoliday && (
+              <label className="holiday-type">
+                Tipo de festivo
+                <select
+                  value={draftHolidayCode}
+                  onChange={(event) => setDraftHolidayCode(event.target.value as HolidayCode)}
+                >
+                  {Object.entries(HOLIDAY_DEFINITIONS).map(([code, label]) => (
+                    <option key={code} value={code}>{code} · {label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <h3>Actividades de la jornada</h3>
             <div className="draft-list">
               {draftActivities.map((activity) => (
@@ -1061,23 +1311,58 @@ function App() {
         </div>
       )}
 
-      {holidayPreview.length > 0 && (
+      {(holidayPreview.length > 0 || pdfSummerPeriod) && (
         <div
-          className="dialog-backdrop"
+          className="dialog-backdrop holiday-import-backdrop"
           role="presentation"
           onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setHolidayPreview([]);
+            if (event.target === event.currentTarget) {
+              setHolidayPreview([]);
+              setPdfSummerPeriod(null);
+            }
           }}
         >
           <section aria-labelledby="holiday-dialog-title" aria-modal="true" className="edit-dialog import-dialog" role="dialog">
             <div className="dialog-heading">
               <div>
                 <p className="eyebrow">IMPORTACIÓN LOCAL</p>
-                <h2 id="holiday-dialog-title">Revisar fechas detectadas</h2>
+                <h2 id="holiday-dialog-title">Revisar datos importados</h2>
               </div>
-              <button aria-label="Cerrar" className="dialog-close" onClick={() => setHolidayPreview([])} type="button">×</button>
+              <button aria-label="Cerrar" className="dialog-close" onClick={() => {
+                setHolidayPreview([]);
+                setPdfSummerPeriod(null);
+              }} type="button">×</button>
             </div>
-            <p className="dialog-note">Confirma las fechas que quieras guardar. El PDF original ya se ha descartado.</p>
+            <p className="dialog-note">Confirma las fechas y el periodo intensivo que quieras guardar. El fichero original ya se ha descartado.</p>
+            {pdfSummerPeriod && (
+              <div className="summer-period-preview">
+                <strong>Periodo intensivo detectado</strong>
+                <label>
+                  Inicio
+                  <input
+                    type="date"
+                    value={pdfSummerPeriod.start}
+                    onChange={(event) =>
+                      setPdfSummerPeriod((current) =>
+                        current ? { ...current, start: event.target.value } : current,
+                      )
+                    }
+                  />
+                </label>
+                <label>
+                  Fin
+                  <input
+                    type="date"
+                    value={pdfSummerPeriod.end}
+                    onChange={(event) =>
+                      setPdfSummerPeriod((current) =>
+                        current ? { ...current, end: event.target.value } : current,
+                      )
+                    }
+                  />
+                </label>
+              </div>
+            )}
             <div className="holiday-preview-list">
               {holidayPreview.map((entry, index) => (
                 <div className="holiday-preview-row" key={entry.date}>
@@ -1097,6 +1382,23 @@ function App() {
                     />
                     {formatLongDate(entry.date)}
                   </label>
+                  <select
+                    aria-label={`Tipo de festivo de ${formatLongDate(entry.date)}`}
+                    value={entry.code}
+                    onChange={(event) =>
+                      setHolidayPreview((current) =>
+                        current.map((item, itemIndex) =>
+                          itemIndex === index
+                            ? { ...item, code: event.target.value as HolidayCode }
+                            : item,
+                        ),
+                      )
+                    }
+                  >
+                    {Object.entries(HOLIDAY_DEFINITIONS).map(([code, label]) => (
+                      <option key={code} value={code}>{code} · {label}</option>
+                    ))}
+                  </select>
                   <input
                     aria-label={`Descripción de ${formatLongDate(entry.date)}`}
                     type="text"
@@ -1117,8 +1419,313 @@ function App() {
             </div>
             {formError && <p className="form-feedback" role="alert">{formError}</p>}
             <div className="dialog-actions">
-              <button className="cancel-button" onClick={() => setHolidayPreview([])} type="button">Cancelar</button>
+              <button className="cancel-button" onClick={() => {
+                setHolidayPreview([]);
+                setPdfSummerPeriod(null);
+              }} type="button">Cancelar</button>
               <button className="save-button" onClick={confirmHolidayImport} type="button">Confirmar festivos</button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {configurationOpen && (
+        <div
+          className="dialog-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setConfigurationOpen(false);
+          }}
+        >
+          <section
+            aria-labelledby="configuration-title"
+            aria-modal="true"
+            className="edit-dialog configuration-dialog"
+            role="dialog"
+          >
+            <div className="dialog-heading">
+              <div>
+                <p className="eyebrow">AJUSTES DEL CALENDARIO</p>
+                <h2 id="configuration-title">Configuración de horario · {year}</h2>
+              </div>
+              <button
+                aria-label="Cerrar configuración"
+                className="dialog-close"
+                onClick={() => setConfigurationOpen(false)}
+                type="button"
+              >
+                ×
+              </button>
+            </div>
+
+            <section className="annual-settings configuration-section">
+              <div className="section-title-row">
+                <div>
+                  <p className="eyebrow">JORNADA ANUAL</p>
+                  <h2>Horario y vacaciones</h2>
+                </div>
+                <button type="button" className="save-button" onClick={saveYearSettings}>
+                  Guardar jornada
+                </button>
+              </div>
+              <div className="settings-fields">
+                <label>
+                  Lunes a jueves
+                  <input
+                    type="time"
+                    step="60"
+                    value={minutesToTimeInput(settingsDraft.mondayToThursdayMinutes)}
+                    onChange={(event) => {
+                      const minutes = parseTimeInput(event.target.value);
+                      if (minutes !== null) {
+                        setSettingsDraft((current) => ({
+                          ...current,
+                          mondayToThursdayMinutes: minutes,
+                        }));
+                      }
+                    }}
+                  />
+                </label>
+                <label>
+                  Viernes y verano
+                  <input
+                    type="time"
+                    step="60"
+                    value={minutesToTimeInput(settingsDraft.fridaySummerMinutes)}
+                    onChange={(event) => {
+                      const minutes = parseTimeInput(event.target.value);
+                      if (minutes !== null) {
+                        setSettingsDraft((current) => ({
+                          ...current,
+                          fridaySummerMinutes: minutes,
+                        }));
+                      }
+                    }}
+                  />
+                </label>
+                <label>
+                  Inicio del verano
+                  <input
+                    type="date"
+                    value={settingsDraft.summerStart}
+                    onChange={(event) =>
+                      setSettingsDraft((current) => ({
+                        ...current,
+                        summerStart: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  Fin del verano
+                  <input
+                    type="date"
+                    value={settingsDraft.summerEnd}
+                    onChange={(event) =>
+                      setSettingsDraft((current) => ({
+                        ...current,
+                        summerEnd: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label>
+                  Cupo de vacaciones (días)
+                  <input
+                    type="number"
+                    min="0"
+                    max="366"
+                    step="1"
+                    value={settingsDraft.vacationQuotaDays}
+                    onChange={(event) =>
+                      setSettingsDraft((current) => ({
+                        ...current,
+                        vacationQuotaDays: Number(event.target.value),
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+              <p className="settings-note">
+                Vacaciones usadas: {getVacationDaysUsed(data, year)} de {yearSettings.vacationQuotaDays} días.
+                {summerConfigured
+                  ? ` Periodo intensivo: ${formatLongDate(yearSettings.summerStart)}–${formatLongDate(yearSettings.summerEnd)}.`
+                  : " Configura las fechas para aplicar la jornada de verano."}
+              </p>
+            </section>
+
+            <section className="management-grid configuration-management">
+              <div className="management-card">
+                <h2>Festivos</h2>
+                <form
+                  className="inline-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    addHoliday();
+                  }}
+                >
+                  <label>
+                    Fecha
+                    <input type="date" value={holidayDate} onChange={(event) => setHolidayDate(event.target.value)} />
+                  </label>
+                  <label>
+                    Tipo
+                    <select value={holidayCode} onChange={(event) => setHolidayCode(event.target.value as HolidayCode)}>
+                      {Object.entries(HOLIDAY_DEFINITIONS).map(([code, label]) => (
+                        <option key={code} value={code}>{code} · {label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Descripción
+                    <input type="text" maxLength={80} value={holidayDescription} onChange={(event) => setHolidayDescription(event.target.value)} placeholder="Festivo local" />
+                  </label>
+                  <button type="submit" className="secondary-button">Añadir</button>
+                </form>
+                <div className="import-controls">
+                  <label>
+                    Separador CSV
+                    <select value={csvDelimiter} onChange={(event) => setCsvDelimiter(event.target.value as "," | ";")}>
+                      <option value=",">Coma (,)</option>
+                      <option value=";">Punto y coma (;)</option>
+                    </select>
+                  </label>
+                  <label className="file-picker">
+                    <span>Importar CSV, XLS o XLSX</span>
+                    <input
+                      type="file"
+                      accept=".csv,.xls,.xlsx,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                      onChange={(event) => {
+                        void importHolidayFile(event.currentTarget.files?.[0], csvDelimiter);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                  <label className="file-picker">
+                    <span>{pdfImporting ? "Leyendo PDF…" : "Importar desde PDF"}</span>
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      disabled={pdfImporting}
+                      onChange={(event) => {
+                        void importHolidayPdf(event.currentTarget.files?.[0]);
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                </div>
+                <p className="privacy-note">
+                  Se admiten fechas dd/mm/aaaa y códigos DI, FL, FA o FN. Los ficheros se procesan solo en este navegador; no se suben.
+                </p>
+                {pdfStatus && (
+                  <p className={`pdf-status${pdfStatus.error ? " error" : ""}`} role={pdfStatus.error ? "alert" : "status"}>
+                    {pdfStatus.message}
+                  </p>
+                )}
+                <ul className="date-list">
+                  {Object.entries(data.holidays)
+                    .filter(([date]) => date.startsWith(`${year}-`))
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([date, description]) => (
+                      <li key={date}>
+                        <span><strong>{formatLongDate(date)}</strong> · {data.holidayCodes[date] ?? "DI"} · {description}</span>
+                        <button type="button" className="text-button" onClick={() => removeHoliday(date)}>Eliminar</button>
+                      </li>
+                    ))}
+                  {!Object.keys(data.holidays).some((date) => date.startsWith(`${year}-`)) && (
+                    <li className="empty-list">Todavía no hay festivos para este año.</li>
+                  )}
+                </ul>
+              </div>
+
+              <div className="management-card">
+                <h2>Excepciones de jornada</h2>
+                <p className="management-description">Define horas para trabajar en fines de semana o festivos. La excepción prevalece sobre la jornada habitual.</p>
+                <form
+                  className="inline-form exception-form"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    saveException();
+                  }}
+                >
+                  <label>Fecha<input type="date" value={exceptionDate} onChange={(event) => setExceptionDate(event.target.value)} /></label>
+                  <label>Jornada<input type="time" step="60" value={exceptionTime} onChange={(event) => setExceptionTime(event.target.value)} /></label>
+                  <button type="submit" className="secondary-button">Guardar</button>
+                </form>
+                <ul className="date-list">
+                  {Object.entries(data.exceptions)
+                    .filter(([date]) => date.startsWith(`${year}-`))
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([date, minutes]) => (
+                      <li key={date}>
+                        <span><strong>{formatLongDate(date)}</strong> · {formatMinutes(minutes)}</span>
+                        <button type="button" className="text-button" onClick={() => removeException(date)}>Eliminar</button>
+                      </li>
+                    ))}
+                  {!Object.keys(data.exceptions).some((date) => date.startsWith(`${year}-`)) && (
+                    <li className="empty-list">Todavía no hay excepciones para este año.</li>
+                  )}
+                </ul>
+              </div>
+            </section>
+            {formError && <p className="form-feedback" role="alert">{formError}</p>}
+          </section>
+        </div>
+      )}
+
+      {departmentOpen && (
+        <div
+          className="dialog-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setDepartmentOpen(false);
+          }}
+        >
+          <section
+            aria-labelledby="department-title"
+            aria-modal="true"
+            className="edit-dialog department-dialog"
+            role="dialog"
+          >
+            <div className="dialog-heading">
+              <div>
+                <p className="eyebrow">VISTA DE DEMOSTRACIÓN</p>
+                <h2 id="department-title">Calendario del departamento · {year}</h2>
+              </div>
+              <button aria-label="Cerrar vista" className="dialog-close" onClick={() => setDepartmentOpen(false)} type="button">×</button>
+            </div>
+            <p className="dialog-note">
+              Las filas anónimas son datos ficticios de ejemplo. La primera fila muestra el calendario local de user1.
+            </p>
+            <div className="department-scroll">
+              <table className="department-table">
+                <thead>
+                  <tr>
+                    <th>Persona</th>
+                    {MONTHS.map((name) => <th key={name}>{name.slice(0, 3)}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {DEPARTMENT_USERS.map((user, userIndex) => (
+                    <tr key={user}>
+                      <th>{user}</th>
+                      {MONTHS.map((name, monthIndex) => {
+                        const summary = getMonthSummary(data, year, monthIndex);
+                        const fakeDays = 18 + ((userIndex + monthIndex) % 4);
+                        return (
+                          <td key={`${user}-${name}`}>
+                            <span className={userIndex === 0 ? "department-hours" : "department-sample"}>
+                              {userIndex === 0
+                                ? formatMinutes(summary.scheduledMinutes)
+                                : `${fakeDays} d`}
+                            </span>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </section>
         </div>

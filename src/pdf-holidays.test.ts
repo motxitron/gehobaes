@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { extractDatesFromText } from "./pdf-holidays";
+import {
+  extractDatesFromText,
+  extractSummerPeriodFromText,
+} from "./pdf-holidays";
 
 describe("detección local de festivos", () => {
   it("reconoce fechas numéricas, ISO y escritas con o sin año", () => {
@@ -21,5 +24,17 @@ describe("detección local de festivos", () => {
     expect(
       extractDatesFromText("31/02/2026, 01/01/2026 y 01/01/2026", 2026),
     ).toEqual(["2026-01-01"]);
+  });
+
+  it("detecta el periodo intensivo si el texto incluye sus dos fechas", () => {
+    expect(
+      extractSummerPeriodFromText(
+        "Periodo de jornada intensiva: del 01/06/2026 al 30/09/2026",
+        2026,
+      ),
+    ).toEqual({ start: "2026-06-01", end: "2026-09-30" });
+    expect(
+      extractSummerPeriodFromText("Jornada intensiva durante el verano", 2026),
+    ).toBeNull();
   });
 });

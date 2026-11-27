@@ -14,9 +14,9 @@ Cada celda indica la jornada prevista y las actividades o coberturas del día. L
 
 ## Configurar la jornada anual
 
-En **Configuración anual**, define las horas de lunes a jueves, las horas de viernes/verano y las fechas inicial y final del verano. Las fechas del verano son inclusivas. Los viernes usan la jornada de viernes/verano durante todo el año; de lunes a jueves solo se usa durante el periodo indicado. Fuera de ese periodo, esos días usan la jornada L-J.
+Pulsa **Configuración de horario** para abrir los ajustes del año seleccionado. Define las horas de lunes a jueves, las horas de viernes/verano, las fechas inicial y final del verano y el cupo anual de vacaciones. Las fechas del verano son inclusivas. Los viernes usan la jornada de viernes/verano durante todo el año; de lunes a jueves solo se usa durante el periodo indicado. Fuera de ese periodo, esos días usan la jornada L-J.
 
-Guarda los cambios con **Guardar jornada**. La aplicación no permite guardar una configuración que deje actividades existentes por encima de la jornada prevista, convierta un día con CR en uno no elegible o invalide otra regla.
+La ventana también reúne festivos, importación de ficheros y excepciones de jornada. El contador de vacaciones muestra los días `X` usados frente al cupo anual. Guarda la configuración con **Guardar jornada**; no se permite reducir el cupo por debajo de las vacaciones ya registradas.
 
 ## Editar actividades y coberturas
 
@@ -27,23 +27,33 @@ Guarda los cambios con **Guardar jornada**. La aplicación no permite guardar un
 5. El código `C` se registra en **Cobertura extra**, fuera de la jornada: no resta horas del día y, sin remunerar, añade esas horas a la bolsa `CD`. Al marcar un bloque como remunerado, se registra como `CR`; `CR` solo se permite dentro del periodo de verano configurado. Pulsa **Guardar día** para aplicar los movimientos a la bolsa.
 6. `CD` consume el saldo disponible y reduce el tiempo restante de trabajo del día. No se puede dejar la bolsa en negativo. El saldo solo se puede usar dentro del mismo año natural y caduca al acabar el año.
 7. Elimina o ajusta cada actividad o bloque individualmente y pulsa **Guardar día**. Si la edición deja una jornada o saldo inválidos, se explica el motivo y no se guarda.
+8. En el editor puedes marcar o desmarcar el día como festivo. Si ya hay actividades incompatibles con la jornada cero, primero tendrás que quitarlas o definir una excepción.
 
 `LD` y `AR` son actividades normales y no consumen la bolsa. El resumen no calcula importes de nómina.
 
 ## Festivos y excepciones de jornada
 
-En **Festivos** introduce fecha y descripción manualmente. También puedes importar un PDF desde el dispositivo:
+En **Configuración de horario → Festivos** introduce fecha, tipo y descripción, o marca directamente el festivo desde el editor del día. Los tipos disponibles son `DI` (día inhábil), `FL` (festivo local), `FA` (fiesta autonómica) y `FN` (fiesta nacional).
+
+También se pueden importar ficheros CSV, XLS, XLSX o PDF desde el dispositivo:
+
+- CSV: cada fila incluye fecha en formato `dd/mm/aaaa`, código `DI`, `FL`, `FA` o `FN` y, opcionalmente, descripción. Se elige explícitamente coma o punto y coma como separador; se admite una cabecera `Fecha,Código,Descripción`.
+- Excel: se lee la primera hoja de libros `.xls` y `.xlsx`; se espera la misma estructura de columnas.
+- Se muestra una vista previa para elegir qué filas guardar y corregir el tipo o descripción. Solo se importan las filas confirmadas.
 
 - El PDF se procesa en el navegador; se limita a 20 MB y 50 páginas.
 - La aplicación detecta fechas del año seleccionado en formatos numéricos, ISO o escritos en castellano, incluso cuando el documento no repite el año; muestra una vista previa editable.
-- Confirma solo las fechas correctas. Se guardan las fechas y descripciones confirmadas, nunca el archivo PDF.
+- Si encuentra un «periodo de jornada intensiva» y dos fechas cercanas en el texto, propone ese periodo para revisión y confirmación; no interpreta los colores del PDF.
+- Confirma solo los datos correctos. Se guardan los festivos confirmados y, si se acepta, el periodo intensivo; nunca los ficheros fuente.
 - El resultado o el error de lectura aparece junto al selector del PDF. Los documentos escaneados sin texto seleccionable no se pueden reconocer automáticamente; usa la entrada manual.
 
 Los festivos aplican jornada cero. Si se trabaja un fin de semana o festivo, registra primero una **Excepción de jornada** con la fecha y las horas previstas. La excepción prevalece sobre el patrón semanal y permite luego añadir actividades al día.
 
 ## Informe mensual
 
-El informe, abierto en otra pestaña, contiene jornada prevista, trabajo sin categoría, totales por actividad, horas extra de cobertura, movimientos y saldos de la bolsa, y detalle diario. Desde el botón de impresión del informe se puede imprimir o guardarlo como PDF.
+El informe, abierto en otra pestaña, contiene jornada prevista, trabajo sin categoría, totales por actividad con horas positivas, horas extra de cobertura, movimientos y saldos de la bolsa, y detalle diario. Las actividades repetidas del mismo código se consolidan. Desde el botón de impresión del informe se puede imprimir o guardarlo como PDF.
+
+**Vista del departamento** abre una cuadrícula mensual con desplazamiento horizontal. `user1` muestra los datos guardados en este navegador; las filas restantes son ejemplos ficticios anónimos, no personas ni horarios reales.
 
 ## Guardado y recuperación
 

@@ -79,10 +79,31 @@ export function extractDatesFromText(text: string, year: number): DateKey[] {
   return [...dates].filter(isDateKey).sort();
 }
 
-export async function extractHolidayDates(
+export interface ExtractedHolidayDocument {
+  dates: DateKey[];
+  summerPeriod: { start: DateKey; end: DateKey } | null;
+}
+
+export function extractSummerPeriodFromText(
+  text: string,
+  year: number,
+): { start: DateKey; end: DateKey } | null {
+  const marker = /(?:periodo|per[ií]odo)?\s*(?:de\s+)?(?:la\s+)?(?:jornada\s+)?(?:intensiva|verano)/gi;
+  for (const match of text.matchAll(marker)) {
+    const start = Math.max(0, (match.index ?? 0) - 100);
+    const end = Math.min(text.length, (match.index ?? 0) + match[0].length + 140);
+    const dates = extractDatesFromText(text.slice(start, end), year);
+    if (dates.length >= 2 && dates[0] !== dates[dates.length - 1]) {
+      return { start: dates[0], end: dates[dates.length - 1] };
+    }
+  }
+  return null;
+}
+
+export async function extractHolidayDocument(
   file: File,
   year: number,
-): Promise<DateKey[]> {
+): Promise<ExtractedHolidayDocument> {
   if (file.size > 20 * 1024 * 1024) {
     throw new Error("El PDF supera el límite local de 20 MB.");
   }
@@ -111,8 +132,24 @@ export async function extractHolidayDates(
         "El PDF no contiene texto seleccionable; si está escaneado, añade los festivos manualmente.",
       );
     }
-    return extractDatesFromText(text, year);
+    const summerPeriod = extractSummerPeriodFromText(text, year);
+    const periodDates = summerPeriod
+      ? new Set([summerPeriod.start, summerPeriod.end])
+      : new Set<DateKey>();
+    return {
+      dates: extractDatesFromText(text, year).filter(
+        (date) => !periodDates.has(date),
+      ),
+      summerPeriod,
+    };
   } finally {
     await loadingTask.destroy();
   }
+}
+
+export async function extractHolidayDates(
+  file: File,
+  year: number,
+): Promise<DateKey[]> {
+  return (await extractHolidayDocument(file, year)).dates;
 }

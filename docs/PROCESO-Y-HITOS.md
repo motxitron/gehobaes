@@ -106,6 +106,9 @@ No se deben subir cambios directamente a `main`. La plantilla del PR incluye una
 
 - [x] Definir jornadas por empleado y año, actividades con duración, festivos, vacaciones, cobertura, bolsa y resumen mensual.
 - [x] Definir importación local y transitoria de PDF, con entrada manual alternativa.
+- [x] Añadir cupo anual de vacaciones, tipos DI/FL/FA/FN y lectura local CSV/XLS/XLSX con vista previa.
+- [x] Agrupar la configuración horaria, festivos y excepciones en una ventana específica.
+- [x] Añadir vista mensual de departamento con filas ficticias anónimas y consolidación del informe mensual.
 - [x] Implementar el modelo anual, los formularios de horario, categorías, festivos y excepciones.
 - [x] Implementar créditos y consumos de la bolsa sin permitir saldo negativo, expiración anual y remuneración solo en el periodo de verano.
 - [x] Añadir edición y borrado de actividades, comprobaciones de jornada e informe mensual en ventana separada.

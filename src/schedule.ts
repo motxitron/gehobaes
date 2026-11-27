@@ -14,9 +14,17 @@ export const ACTIVITY_DEFINITIONS = {
   CD: { label: "Cobertura disfrutada", color: "coverage-enjoyed" },
 } as const;
 
+export const HOLIDAY_DEFINITIONS = {
+  DI: "Día inhábil",
+  FL: "Festivo local",
+  FA: "Fiesta autonómica",
+  FN: "Fiesta nacional",
+} as const;
+
 export type ActivityCode = keyof typeof ACTIVITY_DEFINITIONS;
 export type ReportCode = ActivityCode | "CR";
 export type DateKey = string;
+export type HolidayCode = keyof typeof HOLIDAY_DEFINITIONS;
 
 export interface DayActivity {
   id: string;
@@ -40,14 +48,26 @@ export interface YearSettings {
   fridaySummerMinutes: number;
   summerStart: DateKey;
   summerEnd: DateKey;
+  vacationQuotaDays: number;
 }
 
 export interface ScheduleData {
   yearly: Record<string, YearSettings>;
   holidays: Record<DateKey, string>;
+  holidayCodes: Record<DateKey, HolidayCode>;
   exceptions: Record<DateKey, number>;
   days: Record<DateKey, DayRecord>;
 }
+
+export type ScheduleDataInput = Omit<ScheduleData, "yearly" | "holidayCodes"> & {
+  yearly: Record<
+    string,
+    Omit<YearSettings, "vacationQuotaDays"> & {
+      vacationQuotaDays?: number;
+    }
+  >;
+  holidayCodes?: Record<DateKey, HolidayCode>;
+};
 
 export interface MonthDaySummary {
   date: DateKey;
@@ -77,6 +97,7 @@ export const DEFAULT_YEAR_SETTINGS: YearSettings = {
   fridaySummerMinutes: 7 * 60,
   summerStart: "",
   summerEnd: "",
+  vacationQuotaDays: 0,
 };
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -87,25 +108,49 @@ export function createEmptySchedule(year: number): ScheduleData {
   return {
     yearly: { [year]: { ...DEFAULT_YEAR_SETTINGS } },
     holidays: {},
+    holidayCodes: {},
     exceptions: {},
     days: {},
   };
 }
 
-export function normalizeCoverageActivities(data: ScheduleData): ScheduleData {
+export function mergeActivitiesByCode(activities: DayActivity[]): DayActivity[] {
+  const merged: DayActivity[] = [];
+  for (const activity of activities) {
+    const existing = merged.find((item) => item.code === activity.code);
+    if (existing) {
+      existing.minutes += activity.minutes;
+    } else {
+      merged.push({ ...activity });
+    }
+  }
+  return merged;
+}
+
+export function normalizeScheduleData(
+  data: ScheduleData | ScheduleDataInput,
+): ScheduleData {
   let changed = false;
   const days: Record<DateKey, DayRecord> = {};
   for (const [date, record] of Object.entries(data.days)) {
     const coverageActivities = record.activities.filter(
       (activity) => activity.code === "C",
     );
-    if (coverageActivities.length === 0) {
+    const activities = record.activities.filter(
+      (activity) => activity.code !== "C",
+    );
+    const mergedActivities = mergeActivitiesByCode(activities);
+    if (mergedActivities.length !== activities.length) changed = true;
+    if (
+      coverageActivities.length === 0 &&
+      mergedActivities.length === record.activities.length
+    ) {
       days[date] = record;
       continue;
     }
     changed = true;
     days[date] = {
-      activities: record.activities.filter((activity) => activity.code !== "C"),
+      activities: mergedActivities,
       coverages: [
         ...record.coverages,
         ...coverageActivities.map(({ id, minutes }) => ({
@@ -116,7 +161,56 @@ export function normalizeCoverageActivities(data: ScheduleData): ScheduleData {
       ],
     };
   }
-  return changed ? { ...data, days } : data;
+  const holidayCodes: Record<DateKey, HolidayCode> = {};
+  for (const date of Object.keys(data.holidays)) {
+    const code = data.holidayCodes?.[date];
+    holidayCodes[date] = code && code in HOLIDAY_DEFINITIONS ? code : "DI";
+    if (holidayCodes[date] !== code) changed = true;
+  }
+  if (
+    Object.keys(data.holidayCodes ?? {}).length !==
+    Object.keys(holidayCodes).length
+  ) {
+    changed = true;
+  }
+  const yearly: Record<string, YearSettings> = {};
+  for (const [year, settings] of Object.entries(data.yearly)) {
+    const vacationQuotaDays = Number.isInteger(settings.vacationQuotaDays)
+      ? settings.vacationQuotaDays ?? 0
+      : 0;
+    yearly[year] = {
+      ...DEFAULT_YEAR_SETTINGS,
+      ...settings,
+      vacationQuotaDays,
+    };
+    if (vacationQuotaDays !== settings.vacationQuotaDays) changed = true;
+  }
+  const yearsWithDays = new Set([
+    ...Object.keys(yearly),
+    ...Object.keys(days).map((date) => date.slice(0, 4)),
+  ]);
+  for (const year of yearsWithDays) {
+    const vacationQuotaDays = Object.entries(days).filter(
+      ([date, record]) =>
+        date.startsWith(`${year}-`) &&
+        record.activities.some((activity) => activity.code === "X"),
+    ).length;
+    const settings = yearly[year];
+    const storedSettings = data.yearly[year];
+    if (
+      !settings ||
+      !Number.isInteger(storedSettings?.vacationQuotaDays)
+    ) {
+      yearly[year] = {
+        ...(settings ?? DEFAULT_YEAR_SETTINGS),
+        vacationQuotaDays,
+      };
+      changed = true;
+    }
+  }
+  return changed
+    ? { ...data, days, holidayCodes, yearly }
+    : { ...data, holidayCodes, yearly };
 }
 
 export function isDateKey(value: string): boolean {
@@ -185,6 +279,27 @@ export function getScheduledMinutes(
     return settings.fridaySummerMinutes;
   }
   return settings.mondayToThursdayMinutes;
+}
+
+export function getVacationDaysUsed(data: ScheduleData, year: number): number {
+  const prefix = `${year}-`;
+  return Object.entries(data.days).filter(
+    ([date, record]) =>
+      date.startsWith(prefix) &&
+      record.activities.some((activity) => activity.code === "X"),
+  ).length;
+}
+
+export function validateVacationQuota(
+  data: ScheduleData,
+  year: number,
+  settings = getYearSettings(data, year),
+): string | null {
+  const usedDays = getVacationDaysUsed(data, year);
+  if (usedDays > settings.vacationQuotaDays) {
+    return `El cupo anual de vacaciones es de ${settings.vacationQuotaDays} días y ya hay ${usedDays} marcados.`;
+  }
+  return null;
 }
 
 export function getBankBalance(
@@ -300,6 +415,13 @@ export function validateYearSettings(
       return `La jornada ${label} debe estar entre 00:00 y 24:00.`;
     }
   }
+  if (
+    !Number.isInteger(settings.vacationQuotaDays) ||
+    settings.vacationQuotaDays < 0 ||
+    settings.vacationQuotaDays > 366
+  ) {
+    return "El cupo anual de vacaciones debe estar entre 0 y 366 días.";
+  }
   if (Boolean(settings.summerStart) !== Boolean(settings.summerEnd)) {
     return "Indica las dos fechas del periodo de verano.";
   }
@@ -324,7 +446,10 @@ export function validateAllDays(data: ScheduleData, year: number): string | null
     const error = validateDayRecord(date, record, data);
     if (error) return error;
   }
-  return validateBankBalance(data, year);
+  return (
+    validateBankBalance(data, year) ??
+    validateVacationQuota(data, year)
+  );
 }
 
 export function getMonthSummary(

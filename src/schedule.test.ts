@@ -4,7 +4,9 @@ import {
   getBankBalance,
   getMonthSummary,
   getScheduledMinutes,
-  normalizeCoverageActivities,
+  normalizeScheduleData,
+  type ScheduleDataInput,
+  validateAllDays,
   validateBankBalance,
   validateDayRecord,
   validateYearSettings,
@@ -99,7 +101,7 @@ describe("reglas de jornada", () => {
       coverages: [],
     };
 
-    const normalized = normalizeCoverageActivities(data);
+    const normalized = normalizeScheduleData(data);
     const record = normalized.days["2026-06-01"];
     const summary = getMonthSummary(normalized, 2026, 5);
 
@@ -110,6 +112,54 @@ describe("reglas de jornada", () => {
     expect(getScheduledMinutes("2026-06-01", normalized)).toBe(540);
     expect(validateDayRecord("2026-06-01", record, normalized)).toBeNull();
     expect(getBankBalance(normalized, 2026)).toBe(90);
+  });
+
+  it("agrupa actividades repetidas y migra festivos y vacaciones existentes", () => {
+    const data = createEmptySchedule(2026);
+    data.days["2026-06-01"] = {
+      activities: [
+        { id: "f1", code: "F", minutes: 60 },
+        { id: "f2", code: "F", minutes: 90 },
+      ],
+      coverages: [],
+    };
+    data.days["2026-06-02"] = {
+      activities: [{ id: "x", code: "X", minutes: 540 }],
+      coverages: [],
+    };
+    data.holidays["2026-06-03"] = "Fiesta local";
+    const legacy: ScheduleDataInput = {
+      ...data,
+      yearly: {
+        "2026": {
+          mondayToThursdayMinutes: 540,
+          fridaySummerMinutes: 420,
+          summerStart: "",
+          summerEnd: "",
+        },
+      },
+    };
+
+    const normalized = normalizeScheduleData(legacy);
+    expect(normalized.days["2026-06-01"].activities).toHaveLength(1);
+    expect(normalized.days["2026-06-01"].activities[0].minutes).toBe(150);
+    expect(normalized.holidayCodes["2026-06-03"]).toBe("DI");
+    expect(normalized.yearly["2026"].vacationQuotaDays).toBe(1);
+  });
+
+  it("limita las vacaciones al cupo anual configurado", () => {
+    const data = createEmptySchedule(2026);
+    data.yearly["2026"].vacationQuotaDays = 1;
+    data.days["2026-06-01"] = {
+      activities: [{ id: "x1", code: "X", minutes: 540 }],
+      coverages: [],
+    };
+    data.days["2026-06-02"] = {
+      activities: [{ id: "x2", code: "X", minutes: 540 }],
+      coverages: [],
+    };
+
+    expect(validateAllDays(data, 2026)).toContain("cupo anual");
   });
 });
 
@@ -155,6 +205,7 @@ describe("bolsa anual de cobertura", () => {
       fridaySummerMinutes: 420,
       summerStart: "2026-08-31",
       summerEnd: "2026-07-01",
+      vacationQuotaDays: 0,
     };
     expect(validateYearSettings(2026, invalid)).toContain("periodo de verano");
   });
