@@ -4,7 +4,7 @@ Piloto de una aplicación web para consultar y gestionar horarios de personal po
 
 ## Estado
 
-Primera versión de demostración: una cuenta de muestra (`user1`), un perfil ficticio y una cuadrícula mensual editable. El botón **Today** navega al mes actual y enfoca el día de hoy. Los cambios se guardan únicamente en el almacenamiento local del navegador.
+Piloto funcional para una cuenta ficticia (`user1`): configura jornada por año, registra actividades por horas y coberturas, administra festivos y excepciones, y abre un informe mensual. El botón **Today** vuelve al mes actual y enfoca el día de hoy. Los datos se guardan únicamente en el almacenamiento local del navegador.
 
 > **No es un sistema de producción ni ofrece autenticación, permisos reales o sincronización entre dispositivos.** GitHub Pages publica archivos estáticos; no debe usarse como mecanismo de control de acceso ni almacenarse aquí información real del personal.
 
@@ -14,6 +14,7 @@ Requisitos: Node.js 20 o posterior.
 
 ```bash
 npm ci
+npm test
 npm run dev
 ```
 
@@ -21,6 +22,7 @@ Para comprobar la versión de producción:
 
 ```bash
 npm run build
+npm test
 npm run preview
 ```
 
@@ -35,7 +37,7 @@ El workflow `.github/workflows/deploy-pages.yml` compila y publica `dist` en Git
 ## Datos y privacidad
 
 - El libro Excel de origen y cualquier fichero Excel quedan excluidos por `.gitignore`.
-- Los PDF fuente también quedan excluidos: el importador previsto los leerá localmente y no los subirá ni conservará.
+- Los PDF fuente también quedan excluidos: se leen íntegramente en el navegador y no se suben ni conservan.
 - La demostración contiene solo datos inventados; no copiar nombres, identificadores, turnos ni otros datos de empleados al repositorio.
 - El calendario de demostración se almacena en el navegador de quien lo usa. Borrar los datos del sitio elimina esos cambios.
 - Antes de manejar información real se requiere acordar identidad, backend, autorización en servidor, auditoría, retención y aprobación de seguridad y privacidad.
@@ -43,7 +45,7 @@ El workflow `.github/workflows/deploy-pages.yml` compila y publica `dist` en Git
 ## Proceso e hitos
 
 Consultar [Proceso de desarrollo e hitos](docs/PROCESO-Y-HITOS.md) para el flujo de Pull Requests, criterios de revisión y evolución propuesta.
-La especificación funcional del siguiente paso está en [Hito 2: gestión de horas](docs/HITO-2-GESTION-HORAS.md).
+La especificación funcional de gestión horaria está en [Hito 2: gestión de horas](docs/HITO-2-GESTION-HORAS.md).
 
 ## Instrucciones para Copilot
 

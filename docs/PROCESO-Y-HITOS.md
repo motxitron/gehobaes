@@ -44,6 +44,7 @@ Para verificar la compilación local antes de un PR:
 
 ```powershell
 npm run build
+npm test
 npm run preview
 ```
 
@@ -58,7 +59,7 @@ npm run preview
    git switch -c feat/descripcion-breve
    ```
 
-3. Implementar el cambio, probar `npm run build` y actualizar README, manual o hitos que hayan quedado desfasados.
+3. Implementar el cambio, probar `npm run build` y `npm test`, y actualizar README, manual o hitos que hayan quedado desfasados.
 4. Revisar los archivos que se van a subir. No añadir el Excel, exportaciones, capturas ni datos identificables.
 5. Confirmar cambios y publicar la rama:
 
@@ -101,15 +102,15 @@ No se deben subir cambios directamente a `main`. La plantilla del PR incluye una
 - Validar jornadas, calendario, permisos y cambios de perfil.
 - Mantener fixtures sintéticos para pruebas.
 
-### H2 — Gestión de jornada por horas y bolsa de cobertura (especificación definida)
+### H2 — Gestión de jornada por horas y bolsa de cobertura (implementado)
 
 - [x] Definir jornadas por empleado y año, actividades con duración, festivos, vacaciones, cobertura, bolsa y resumen mensual.
 - [x] Definir importación local y transitoria de PDF, con entrada manual alternativa.
-- [ ] Implementar el modelo anual, los formularios de horario, categorías, festivos y excepciones.
-- [ ] Implementar créditos y consumos de la bolsa sin permitir saldo negativo, expiración anual y remuneración solo en el periodo de verano.
-- [ ] Añadir edición y borrado de actividades, comprobaciones de jornada e informe mensual en ventana separada.
-- [ ] Validar la importación PDF en el navegador; nunca subir ni persistir el fichero original.
-- [ ] Completar los criterios de aceptación descritos en [la especificación del Hito 2](HITO-2-GESTION-HORAS.md).
+- [x] Implementar el modelo anual, los formularios de horario, categorías, festivos y excepciones.
+- [x] Implementar créditos y consumos de la bolsa sin permitir saldo negativo, expiración anual y remuneración solo en el periodo de verano.
+- [x] Añadir edición y borrado de actividades, comprobaciones de jornada e informe mensual en ventana separada.
+- [x] Validar la importación PDF en el navegador; nunca subir ni persistir el fichero original.
+- [x] Completar los criterios de aceptación descritos en [la especificación del Hito 2](HITO-2-GESTION-HORAS.md).
 
 ### H3 — Identidad y permisos
 
